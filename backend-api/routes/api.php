@@ -22,15 +22,15 @@ Route::get('/students', [StudentController::class, 'index']);
 Route::put('/students/{id}', [StudentController::class, 'update']);
 Route::delete('/students/{id}', [StudentController::class, 'destroy']);
 
-// Fitur Keuangan & Dompet Siswa
+// 3. Fitur Keuangan & Dompet Siswa
 Route::post('/students/topup/{id}', [StudentController::class, 'topUp']);
 Route::post('/students/verify-pin', [StudentController::class, 'verifyPin']);
 
-// Fitur Histori Transaksi
+// 4. Fitur Histori Transaksi
 Route::get('/transactions/{student_id}', [TransactionController::class, 'index']);
 Route::post('/transactions', [TransactionController::class, 'store']);
 
-// Fitur Tagihan (Bills)
+// 5. Fitur Tagihan (Bills)
 Route::get('/bills', [BillController::class, 'index']);
 Route::get('/bills/student/{student_id}', [BillController::class, 'getStudentBills']);
 Route::post('/bills', [BillController::class, 'store']);

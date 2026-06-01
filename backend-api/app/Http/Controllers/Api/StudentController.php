@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Student; // KEMBALI MENGGUNAKAN MODEL STUDENT
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -32,7 +32,7 @@ class StudentController extends Controller
             'jurusan' => $request->jurusan,
             'nama_lengkap' => $request->nama_lengkap,
             'saldo' => 0,
-            'pin' => '123456', // PIN Default
+            'pin' => '123456', // Penanaman PIN Default Otomatis
         ]);
 
         return response()->json([
@@ -111,14 +111,12 @@ class StudentController extends Controller
             'pin' => 'required'
         ]);
 
-        // MENCARI DI TABEL STUDENTS
         $student = Student::find($request->student_id);
 
         if (!$student) {
             return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
         }
 
-        // Pengecekan PIN
         if ($request->pin == $student->pin || Hash::check($request->pin, $student->pin)) {
             return response()->json(['status' => 'success', 'message' => 'PIN Benar'], 200);
         } else {
