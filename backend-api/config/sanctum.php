@@ -20,7 +20,7 @@ return [
 
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
         '%s%s',
-        'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
+        'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1,projek-edufin-uas-ez8c-9lfoxtsxo-uciha-s-projects1.vercel.app,projek-edufin-uas-ez8c.vercel.app',
         Sanctum::currentApplicationUrlWithPort(),
         // Sanctum::currentRequestHost(),
     ))),

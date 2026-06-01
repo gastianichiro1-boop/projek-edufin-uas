@@ -24,13 +24,13 @@ export default function AdminTagihan() {
             try {
                 // Ambil data siswa
                 const resStudents = await axios.get(
-                    "http://127.0.0.1:8000/api/students",
+                    `${import.meta.env.VITE_API_BASE_URL}/api/students`,
                 );
                 setStudents(resStudents.data);
 
                 // Ambil semua data tagihan
                 const resBills = await axios.get(
-                    "http://127.0.0.1:8000/api/bills",
+                    `${import.meta.env.VITE_API_BASE_URL}/bills`,
                 );
                 setBills(resBills.data);
             } catch (error) {
@@ -99,7 +99,7 @@ export default function AdminTagihan() {
 
             // Tembak API
             const response = await axios.post(
-                "http://127.0.0.1:8000/api/bills",
+                `${import.meta.env.VITE_API_BASE_URL}/bills`,
                 payload,
             );
 

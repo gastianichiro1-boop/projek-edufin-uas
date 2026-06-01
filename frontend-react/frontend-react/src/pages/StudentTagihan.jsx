@@ -29,7 +29,7 @@ export default function StudentTagihan() {
         try {
             setLoading(true);
             const response = await axios.get(
-                `http://127.0.0.1:8000/api/bills/student/${studentId}`,
+                `${import.meta.env.VITE_API_BASE_URL}/bills/student/${studentId}`,
             );
             setBills(response.data);
         } catch (error) {
@@ -94,14 +94,14 @@ export default function StudentTagihan() {
 
         try {
             // 1. Verifikasi PIN ke Backend Laravel
-            await axios.post("http://127.0.0.1:8000/api/students/verify-pin", {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/students/verify-pin`, {
                 student_id: studentData.id,
                 pin: pin,
             });
 
             // 2. Jika sukses (PIN Benar), Potong saldo dompet
             const resTopup = await axios.post(
-                `http://127.0.0.1:8000/api/students/topup/${studentData.id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/students/topup/${studentData.id}`,
                 {
                     nominal: -parseInt(selectedBill.nominal),
                 },
@@ -109,11 +109,11 @@ export default function StudentTagihan() {
 
             // 3. Tembak API Laravel untuk mengubah status tagihan jadi 'paid'
             await axios.put(
-                `http://127.0.0.1:8000/api/bills/${selectedBill.id}/pay`,
+                `${import.meta.env.VITE_API_BASE_URL}/bills/${selectedBill.id}/pay`,
             );
 
             // 4. CATAT KE HISTORI TRANSAKSI DOMPET
-            await axios.post("http://127.0.0.1:8000/api/transactions", {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/transactions`, {
                 student_id: studentData.id,
                 title: "PEMBAYARAN TAGIHAN",
                 subtitle: selectedBill.jenis_tagihan,

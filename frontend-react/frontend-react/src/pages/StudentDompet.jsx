@@ -23,7 +23,7 @@ export default function StudentDompet() {
     const fetchDompetData = async (id) => {
         try {
             const res = await axios.get(
-                `http://127.0.0.1:8000/api/transactions/${id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/transactions/${id}`,
             );
             // Mengurutkan dari yang terbaru
             const sortedHistory = res.data.sort(
@@ -52,7 +52,7 @@ export default function StudentDompet() {
         setLoading(true);
         try {
             // 1. Simpan Transaksi Pemasukan ke Database
-            await axios.post("http://127.0.0.1:8000/api/transactions", {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/transactions`, {
                 student_id: studentData.id,
                 title: "ISI SALDO",
                 subtitle: selectedProvider,
@@ -61,7 +61,7 @@ export default function StudentDompet() {
 
             // 2. Update Saldo di tabel Students
             const updateSaldo = await axios.post(
-                `http://127.0.0.1:8000/api/students/topup/${studentData.id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/students/topup/${studentData.id}`,
                 { nominal },
             );
 

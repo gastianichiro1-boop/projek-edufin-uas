@@ -20,7 +20,7 @@ export default function AdminDashboard() {
     const fetchStudents = async () => {
         try {
             const response = await axios.get(
-                "http://127.0.0.1:8000/api/students",
+                `${import.meta.env.VITE_API_BASE_URL}/students`,
             );
             setStudents(response.data);
         } catch (error) {
@@ -53,7 +53,7 @@ export default function AdminDashboard() {
         if (!selectedStudent) return;
         try {
             await axios.delete(
-                `http://127.0.0.1:8000/api/students/${selectedStudent.id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/students/${selectedStudent.id}`,
             );
             fetchStudents(); // Refresh data
             handleDoubleClickCancel(); // Tutup semua pop-up
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
         e.preventDefault();
         try {
             await axios.put(
-                `http://127.0.0.1:8000/api/students/${selectedStudent.id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/students/${selectedStudent.id}`,
                 selectedStudent,
             );
             fetchStudents(); // Refresh data

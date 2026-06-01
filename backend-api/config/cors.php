@@ -19,11 +19,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // REVISI: Mendaftarkan alamat resmi Frontend agar diberikan akses VIP oleh Laravel
+    // Mendaftarkan alamat resmi Frontend agar diberikan akses VIP oleh Laravel
     'allowed_origins' => [
-        'http://localhost:5173',  // Akses dari React di laptopmu
-        'http://127.0.0.1:5173',  // Akses alternatif React
-        '*',                      // Jembatan sementara untuk Vercel (bisa diganti URL asli setelah deploy)
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'https://projek-edufin-uas-ez8c-9lfoxtsxo-uciha-s-projects1.vercel.app',
+        'https://projek-edufin-uas-ez8c.vercel.app',
     ],
 
     'allowed_origins_patterns' => [],
@@ -34,6 +35,7 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    // Wajib diubah menjadi true agar sesi login (Sanctum) dari Vercel bisa masuk
+    'supports_credentials' => true,
 
 ];

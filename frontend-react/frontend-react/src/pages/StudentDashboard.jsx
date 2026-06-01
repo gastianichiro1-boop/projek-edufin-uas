@@ -36,7 +36,7 @@ export default function StudentDashboard() {
         try {
             setLoadingTagihan(true);
             const response = await axios.get(
-                `http://127.0.0.1:8000/api/bills/student/${studentId}`,
+                `${import.meta.env.VITE_API_BASE_URL}/bills/student/${studentId}`,
             );
             // Filter hanya tagihan yang belum lunas
             setTagihanData(response.data.filter((b) => b.status === "unpaid"));
@@ -49,7 +49,7 @@ export default function StudentDashboard() {
 
     const fetchNews = async () => {
         try {
-            const res = await axios.get("http://127.0.0.1:8000/api/news");
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/news`);
             setNewsData(res.data);
         } catch (err) {
             console.error("Gagal ambil berita:", err);

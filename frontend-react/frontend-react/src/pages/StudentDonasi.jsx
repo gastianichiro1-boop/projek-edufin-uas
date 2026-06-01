@@ -34,13 +34,13 @@ export default function StudentDonasi() {
 
         try {
             // 1. Verifikasi PIN ke Backend Laravel
-            await axios.post("http://127.0.0.1:8000/api/students/verify-pin", {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/students/verify-pin`, {
                 student_id: studentData.id,
                 pin: pin,
             });
 
             // 2. Jika sukses (PIN Benar), simpan Transaksi ke Database
-            await axios.post("http://127.0.0.1:8000/api/transactions", {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/transactions`, {
                 student_id: studentData.id,
                 title: "DONASI",
                 subtitle: "Bantuan Teman Sebaya",
@@ -49,7 +49,7 @@ export default function StudentDonasi() {
 
             // 3. Update Saldo di Database
             const res = await axios.post(
-                `http://127.0.0.1:8000/api/students/topup/${studentData.id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/students/topup/${studentData.id}`,
                 {
                     nominal: -parseInt(amount),
                 },
