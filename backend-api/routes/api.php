@@ -37,9 +37,4 @@ Route::get('/bills/student/{student_id}', [BillController::class, 'getStudentBil
 Route::post('/bills', [BillController::class, 'store']);
 Route::put('/bills/{id}/pay', [BillController::class, 'payBill']);
 
-// 6. Rute Rahasia (Bypass Seeder) - HAPUS SETELAH DIGUNAKAN!
-Route::get('/tembak-admin', function () {
-    Artisan::call('db:seed');
-    return response()->json(['message' => 'DOR! Mesin berhasil di-seed! Akun Admin siap digunakan.']);
-});
-//hehe
+
