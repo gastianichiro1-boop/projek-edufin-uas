@@ -63,10 +63,9 @@ export default function StudentTagihan() {
     // --- FUNGSI CEK JATUH TEMPO ---
     const isOverdue = (tanggal) => {
         if (!tanggal) return false;
-        // Ambil tanggal jatuh tempo dan atur ke akhir hari (jam 23:59:59)
         const dueDate = new Date(tanggal);
         dueDate.setHours(23, 59, 59, 999);
-        const now = new Date(); // Waktu saat ini
+        const now = new Date();
         return now > dueDate;
     };
 
@@ -78,7 +77,7 @@ export default function StudentTagihan() {
 
     const handleBukaOverdue = (bill) => {
         setSelectedBill(bill);
-        setStep(4); // Buka modal khusus jatuh tempo
+        setStep(4);
     };
 
     const handleLanjutKePin = () => {
@@ -87,43 +86,41 @@ export default function StudentTagihan() {
         setPinError("");
     };
 
-    // --- LOGIKA VERIFIKASI PIN & BAYAR (TERHUBUNG DATABASE) ---
+    // --- LOGIKA VERIFIKASI PIN & BAYAR (SUDAH DISINKRONKAN DENGAN LARAVEL) ---
     const handlePinSubmit = async () => {
         setIsProcessing(true);
-        setPinError(""); // Reset error sebelumnya
+        setPinError("");
 
         try {
             // 1. Verifikasi PIN ke Backend Laravel
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/students/verify-pin`, {
-                student_id: studentData.id,
-                pin: pin,
-            });
-
-            // 2. Jika sukses (PIN Benar), Potong saldo dompet
-            const resTopup = await axios.post(
-                `${import.meta.env.VITE_API_BASE_URL}/students/topup/${studentData.id}`,
+            await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/students/verify-pin`,
                 {
-                    nominal: -parseInt(selectedBill.nominal),
+                    student_id: studentData.id,
+                    pin: pin,
                 },
             );
 
-            // 3. Tembak API Laravel untuk mengubah status tagihan jadi 'paid'
-            await axios.put(
+            // 2. Tembak API Laravel untuk mengubah status tagihan jadi 'paid' SEKALIGUS potong saldo (Mengikuti Solusi 2 yang Aman)
+            const resPay = await axios.put(
                 `${import.meta.env.VITE_API_BASE_URL}/bills/${selectedBill.id}/pay`,
             );
 
-            // 4. CATAT KE HISTORI TRANSAKSI DOMPET
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/transactions`, {
-                student_id: studentData.id,
-                title: "PEMBAYARAN TAGIHAN",
-                subtitle: selectedBill.jenis_tagihan,
-                amount: selectedBill.nominal,
-            });
+            // 3. CATAT KE HISTORI TRANSAKSI DOMPET
+            await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/transactions`,
+                {
+                    student_id: studentData.id,
+                    title: "PEMBAYARAN TAGIHAN",
+                    subtitle: selectedBill.jenis_tagihan,
+                    amount: selectedBill.nominal,
+                },
+            );
 
-            // 5. Update Saldo di memori lokal
+            // 4. Update Saldo di memori lokal menggunakan data 'sisa_saldo' dari response payload BillController
             const updatedStudent = {
                 ...studentData,
-                saldo: resTopup.data.saldo_baru,
+                saldo: resPay.data.data.sisa_saldo,
             };
             setStudentData(updatedStudent);
             localStorage.setItem(
@@ -131,19 +128,17 @@ export default function StudentTagihan() {
                 JSON.stringify(updatedStudent),
             );
 
-            // 6. Update state tabel lokal
+            // 5. Update status tabel lokal agar langsung berubah jadi "Lunas" di layar
             setBills(
                 bills.map((b) =>
                     b.id === selectedBill.id ? { ...b, status: "paid" } : b,
                 ),
             );
 
-            setStep(3); // Pindah ke layar sukses
+            setStep(3); // Pindah ke layar struk sukses
             setAttempts(3); // Reset percobaan PIN
         } catch (error) {
-            // Menangkap error dari backend
             if (error.response && error.response.status === 401) {
-                // Logika jika PIN Salah
                 const sisaPercobaan = attempts - 1;
                 setAttempts(sisaPercobaan);
                 setPin("");
@@ -156,10 +151,11 @@ export default function StudentTagihan() {
                     setPinError(`PIN Salah! Sisa percobaan: ${sisaPercobaan}x`);
                 }
             } else {
-                // Logika jika error koneksi atau saldo tidak cukup dari server
-                alert(
-                    "Gagal memproses pembayaran ke server. Pastikan koneksi stabil.",
-                );
+                // Menampilkan pesan error spesifik dari server jika ada (misal: saldo tidak cukup)
+                const errorMessage =
+                    error.response?.data?.message ||
+                    "Gagal memproses pembayaran ke server. Pastikan koneksi stabil.";
+                alert(errorMessage);
             }
         } finally {
             setIsProcessing(false);
@@ -247,7 +243,6 @@ export default function StudentTagihan() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-5 rounded-r-2xl text-center">
-                                                    {/* LOGIKA TOMBOL AKSI BERDASARKAN STATUS DAN JATUH TEMPO */}
                                                     {bill.status === "paid" ? (
                                                         <button className="bg-green-600 cursor-default text-white text-[9px] lg:text-[10px] font-bold py-2 px-6 rounded-full tracking-widest shadow-lg opacity-80">
                                                             LUNAS
@@ -295,9 +290,7 @@ export default function StudentTagihan() {
                 </div>
             </main>
 
-            {/* ========================================================================= */}
-            {/* POP-UP 1: DETAIL NORMAL (BISA BAYAR) */}
-            {/* ========================================================================= */}
+            {/* POP-UP 1: DETAIL NORMAL */}
             {step === 1 && selectedBill && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in-up">
                     <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative">
@@ -373,9 +366,7 @@ export default function StudentTagihan() {
                 </div>
             )}
 
-            {/* ========================================================================= */}
-            {/* POP-UP 2: INPUT PIN PEMBAYARAN */}
-            {/* ========================================================================= */}
+            {/* POP-UP 2: INPUT PIN */}
             {step === 2 && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-6 animate-fade-in-up">
                     <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-10 w-full max-w-sm shadow-2xl relative flex flex-col items-center text-center">
@@ -424,9 +415,7 @@ export default function StudentTagihan() {
                 </div>
             )}
 
-            {/* ========================================================================= */}
-            {/* POP-UP 3: STRUK SUKSES LUNAS */}
-            {/* ========================================================================= */}
+            {/* POP-UP 3: STRUK SUKSES */}
             {step === 3 && selectedBill && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in-up">
                     <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-10 w-full max-w-sm shadow-2xl flex flex-col items-center text-center">
@@ -476,9 +465,7 @@ export default function StudentTagihan() {
                 </div>
             )}
 
-            {/* ========================================================================= */}
-            {/* POP-UP 4: OVERDUE (JATUH TEMPO) - GLASSMORPHISM */}
-            {/* ========================================================================= */}
+            {/* POP-UP 4: OVERDUE */}
             {step === 4 && selectedBill && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in-up">
                     <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-10 w-full max-w-sm shadow-2xl relative flex flex-col items-center text-center">
@@ -487,7 +474,6 @@ export default function StudentTagihan() {
                             className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors text-xl outline-none">
                             ✕
                         </button>
-
                         <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 shadow-inner border border-red-500/50">
                             <svg
                                 className="w-10 h-10 text-red-400"
@@ -502,22 +488,18 @@ export default function StudentTagihan() {
                                 />
                             </svg>
                         </div>
-
                         <h3 className="text-white text-xl font-bold tracking-widest mb-2 uppercase">
                             TAGIHAN KADALUARSA
                         </h3>
-
                         <p className="text-gray-300 text-sm leading-relaxed mb-8">
                             Silakan datang ke ruang Tata Usaha (TU) sekolah
                             untuk melakukan pembayaran tagihan{" "}
                             <strong className="text-white">
-                                {" "}
-                                {selectedBill.jenis_tagihan}{" "}
+                                {selectedBill.jenis_tagihan}
                             </strong>{" "}
                             karena telah melewati batas jatuh tempo (
                             {formatTanggal(selectedBill.jatuh_tempo)}).
                         </p>
-
                         <button
                             onClick={() => setStep(0)}
                             className="w-full bg-[#1C4188]/60 hover:bg-[#1C4188] text-white font-bold tracking-widest py-4 rounded-full transition-all shadow-lg border border-blue-400/30 outline-none backdrop-blur-md">
