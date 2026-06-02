@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\AuthController as EdufinAuthController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\BillController;
+use Illuminate\Support\Facades\Artisan;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,3 +36,9 @@ Route::get('/bills', [BillController::class, 'index']);
 Route::get('/bills/student/{student_id}', [BillController::class, 'getStudentBills']);
 Route::post('/bills', [BillController::class, 'store']);
 Route::put('/bills/{id}/pay', [BillController::class, 'payBill']);
+
+// 6. Rute Rahasia (Bypass Seeder) - HAPUS SETELAH DIGUNAKAN!
+Route::get('/tembak-admin', function () {
+    Artisan::call('db:seed');
+    return response()->json(['message' => 'DOR! Mesin berhasil di-seed! Akun Admin siap digunakan.']);
+});
