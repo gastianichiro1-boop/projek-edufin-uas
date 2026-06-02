@@ -24,7 +24,7 @@ export default function AdminTagihan() {
             try {
                 // Ambil data siswa
                 const resStudents = await axios.get(
-                    `${import.meta.env.VITE_API_BASE_URL}/api/students`,
+                    `${import.meta.env.VITE_API_BASE_URL}/students`,
                 );
                 setStudents(resStudents.data);
 
