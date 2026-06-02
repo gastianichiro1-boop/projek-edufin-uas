@@ -42,3 +42,4 @@ Route::get('/tembak-admin', function () {
     Artisan::call('db:seed');
     return response()->json(['message' => 'DOR! Mesin berhasil di-seed! Akun Admin siap digunakan.']);
 });
+//hehe
