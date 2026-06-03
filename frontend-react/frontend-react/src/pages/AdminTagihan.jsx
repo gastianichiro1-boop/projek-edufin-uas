@@ -5,7 +5,10 @@ import SidebarAdmin from "../components/SidebarAdmin";
 export default function AdminTagihan() {
     // 1. STATE UTAMA
     const [students, setStudents] = useState([]);
-    const [bills, setBills] = useState([]); // Sekarang diawali dengan array kosong
+    const [bills, setBills] = useState([]);
+
+    // STATE FILTER BARU (Menyesuaikan desain AdminDashboard)
+    const [activeJurusan, setActiveJurusan] = useState("FI");
     const [activeKelas, setActiveKelas] = useState("X");
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -40,16 +43,21 @@ export default function AdminTagihan() {
         fetchData();
     }, []);
 
-    // Filter Ganda (Kelas & Pencarian)
+    // ==========================================
+    // PERBAIKAN LOGIKA FILTER (Kelas + Jurusan + Search)
+    // ==========================================
     const filteredStudents = students.filter((student) => {
+        const matchJurusan =
+            student.jurusan?.toUpperCase() === activeJurusan.toUpperCase();
         const matchKelas =
             student.kelas?.toUpperCase() === activeKelas.toUpperCase();
+        const keyword = searchQuery.toLowerCase();
         const matchSearch =
-            student.nama_lengkap
-                ?.toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-            student.nisn?.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchKelas && matchSearch;
+            (student.nama_lengkap &&
+                student.nama_lengkap.toLowerCase().includes(keyword)) ||
+            (student.nisn && student.nisn.toLowerCase().includes(keyword));
+
+        return matchJurusan && matchKelas && matchSearch;
     });
 
     // FUNGSI VALIDASI KETAT NOMINAL (Hanya angka)
@@ -89,7 +97,7 @@ export default function AdminTagihan() {
         }
 
         try {
-            // Data yang dikirim ke Laravel (Sesuai dengan Request Validator)
+            // Data yang dikirim ke Laravel
             const payload = {
                 student_id: selectedStudent.id,
                 jenis_tagihan: jenisTagihan,
@@ -112,7 +120,6 @@ export default function AdminTagihan() {
             setNominal("");
             setShowAddModal(false);
 
-            // Optional: Beri notifikasi sukses
             alert("Berhasil menambahkan tagihan permanen!");
         } catch (error) {
             console.error(
@@ -128,15 +135,17 @@ export default function AdminTagihan() {
             <SidebarAdmin activeMenu="tagihan" />
 
             <main className="flex-1 p-8 flex flex-col relative overflow-hidden h-screen">
-                {/* Top Actions */}
-                <div className="flex justify-end items-center mb-8">
+                {/* ========================================== */}
+                {/* PERBAIKAN: TOP ACTIONS (DISAMAKAN DENGAN FOTO 1) */}
+                {/* ========================================== */}
+                <div className="flex justify-between items-center mb-8">
                     <div className="relative w-96">
                         <input
                             type="text"
                             placeholder="Cari Berdasarkan Nama / NISN"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-[#4E5364] text-white placeholder-gray-300 rounded-full py-3 px-6 pr-12 outline-none border-none focus:ring-2 focus:ring-[#2D60FF] transition-all"
+                            className="w-full bg-[#4E5364] text-white placeholder-gray-300 rounded-full py-3 px-6 pr-12 outline-none border-none focus:ring-2 focus:ring-blue-400"
                         />
                         <svg
                             className="absolute right-4 top-3.5 w-5 h-5 text-white"
@@ -150,6 +159,19 @@ export default function AdminTagihan() {
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                             />
                         </svg>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setActiveJurusan("FI")}
+                            className={`font-bold py-3 px-8 rounded-3xl transition-colors ${activeJurusan === "FI" ? "bg-[#4E5364] text-white" : "bg-[#1C2031] text-gray-400"}`}>
+                            FI
+                        </button>
+                        <button
+                            onClick={() => setActiveJurusan("TKI")}
+                            className={`font-bold py-3 px-8 rounded-3xl transition-colors ${activeJurusan === "TKI" ? "bg-[#4E5364] text-white" : "bg-[#1C2031] text-gray-400"}`}>
+                            TKI
+                        </button>
                     </div>
                 </div>
 
@@ -171,8 +193,8 @@ export default function AdminTagihan() {
                                     <th className="py-4 text-xl font-bold">
                                         Kelas
                                     </th>
-                                    <th className="py-4 text-center">
-                                        <div className="bg-[#1C2031] inline-block px-4 py-2 rounded-xl text-xs font-bold leading-tight shadow-md border border-white/5">
+                                    <th className="py-4 text-right">
+                                        <div className="bg-[#1C2031] inline-block px-3 py-2 rounded-lg text-xs font-bold text-center leading-tight">
                                             Total siswa
                                             <br />
                                             Kelas {activeKelas} :{" "}
@@ -199,16 +221,16 @@ export default function AdminTagihan() {
                                             <td className="py-6 font-bold text-lg">
                                                 {student.kelas}
                                             </td>
-                                            <td className="py-6 text-center">
+                                            <td className="py-6 text-right">
                                                 <button
                                                     onClick={() =>
                                                         setSelectedStudent(
                                                             student,
                                                         )
                                                     }
-                                                    className="text-white hover:text-[#2D60FF] transition-all transform hover:scale-110 outline-none">
+                                                    className="text-white hover:text-[#2D60FF] transition-all transform hover:scale-110 outline-none inline-block mr-4">
                                                     <svg
-                                                        className="w-8 h-8 mx-auto drop-shadow-md"
+                                                        className="w-8 h-8 drop-shadow-md"
                                                         fill="currentColor"
                                                         viewBox="0 0 24 24">
                                                         <path d="M8 5v14l11-7z" />
@@ -223,8 +245,8 @@ export default function AdminTagihan() {
                                             colSpan="5"
                                             className="py-12 text-center text-gray-400 italic">
                                             {searchQuery
-                                                ? `Tidak ada siswa bernama/NISN "${searchQuery}" di Kelas ${activeKelas}.`
-                                                : `Belum ada data siswa di Kelas ${activeKelas}.`}
+                                                ? `Tidak ada siswa bernama/NISN "${searchQuery}" di Jurusan ${activeJurusan} Kelas ${activeKelas}.`
+                                                : `Belum ada data siswa di Jurusan ${activeJurusan} Kelas ${activeKelas}.`}
                                         </td>
                                     </tr>
                                 )}
