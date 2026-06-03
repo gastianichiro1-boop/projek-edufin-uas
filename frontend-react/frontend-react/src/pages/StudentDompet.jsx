@@ -19,6 +19,12 @@ export default function StudentDompet() {
     const [txDetail, setTxDetail] = useState(null);
     const [selectedTx, setSelectedTx] = useState(null);
 
+    // ==========================================
+    // STATE BARU: Limit Saldo 5 Juta
+    // ==========================================
+    const [showLimitModal, setShowLimitModal] = useState(false); // Pop-up Foto 1
+    const [showLimitTooltip, setShowLimitTooltip] = useState(false); // Pop-up Foto 2 (Tooltip 8 Detik)
+
     // FUNGSI UTAMA: Mengambil seluruh riwayat dari Database
     const fetchDompetData = async (id) => {
         try {
@@ -44,20 +50,41 @@ export default function StudentDompet() {
         }
     }, []);
 
+    // ==========================================
+    // EFEK TIMER 8 DETIK UNTUK TOOLTIP (FOTO 2)
+    // ==========================================
+    useEffect(() => {
+        // Jika data siswa sudah ada, dan saldo >= 5.000.000, munculkan tooltip 8 detik
+        if (studentData && parseInt(studentData.saldo || 0) >= 5000000) {
+            setShowLimitTooltip(true);
+            const timer = setTimeout(() => {
+                setShowLimitTooltip(false);
+            }, 8000); // Hilang setelah 8 detik
+
+            // Bersihkan timer jika komponen ditutup
+            return () => clearTimeout(timer);
+        } else {
+            setShowLimitTooltip(false);
+        }
+    }, [studentData]);
+
     const handleTopup = async () => {
-        if (parseInt(nominal) < 10000 || parseInt(nominal) > 1000000) {
-            alert("Minimal Rp 10.000 dan Maksimal Rp 1.000.000");
+        if (parseInt(nominal) < 10000 || parseInt(nominal) > 5000000) {
+            alert("Minimal Rp 10.000");
             return;
         }
         setLoading(true);
         try {
             // 1. Simpan Transaksi Pemasukan ke Database
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/transactions`, {
-                student_id: studentData.id,
-                title: "ISI SALDO",
-                subtitle: selectedProvider,
-                amount: nominal,
-            });
+            await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/transactions`,
+                {
+                    student_id: studentData.id,
+                    title: "ISI SALDO",
+                    subtitle: selectedProvider,
+                    amount: nominal,
+                },
+            );
 
             // 2. Update Saldo di tabel Students
             const updateSaldo = await axios.post(
@@ -94,7 +121,21 @@ export default function StudentDompet() {
             }, 1000);
         } catch (error) {
             setLoading(false);
-            alert("Gagal memproses transaksi.");
+            // ==========================================
+            // LOGIKA MENANGKAP ERROR LIMIT DARI LARAVEL
+            // ==========================================
+            if (
+                error.response?.status === 403 &&
+                error.response?.data?.status === "error_limit"
+            ) {
+                setShowTopupModal(false); // Tutup modal top up
+                setShowLimitModal(true); // Munculkan modal Limit (Foto 1)
+            } else {
+                alert(
+                    "Gagal memproses transaksi: " +
+                        (error.response?.data?.message || "Terjadi kesalahan"),
+                );
+            }
         }
     };
 
@@ -133,27 +174,42 @@ export default function StudentDompet() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-center text-white mt-8">
+                    <div className="flex flex-col items-center text-white mt-8 relative">
                         <p className="text-[17px] font-bold tracking-[0.1em] mb-2">
                             Saldo Dompetmu
                         </p>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-6 relative">
                             <h1 className="text-[75px] font-light tracking-widest">
                                 Rp.{" "}
                                 {parseInt(studentData.saldo || 0)
                                     .toLocaleString("id-ID")
                                     .replace(/,/g, ".")}
                             </h1>
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setShowTopupModal(true);
-                                    setTopupStep(1);
-                                    setNominal("");
-                                }}
-                                className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-3xl font-light transition-all duration-300 hover:scale-110 hover:bg-white/20 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6)] backdrop-blur-sm cursor-pointer z-50 outline-none pb-1">
-                                +
-                            </button>
+
+                            <div className="relative flex items-center">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setShowTopupModal(true);
+                                        setTopupStep(1);
+                                        setNominal("");
+                                    }}
+                                    className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-3xl font-light transition-all duration-300 hover:scale-110 hover:bg-white/20 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6)] backdrop-blur-sm cursor-pointer z-50 outline-none pb-1">
+                                    +
+                                </button>
+
+                                {/* TOOLTIP 8 DETIK (FOTO 2) */}
+                                {showLimitTooltip && (
+                                    <div className="absolute left-full ml-6 w-64 bg-[#4B4051] text-white p-4 rounded-2xl shadow-2xl z-50 animate-fade-in-up">
+                                        <div className="absolute top-1/2 -left-2 transform -translate-y-1/2 w-0 h-0 border-y-8 border-y-transparent border-r-8 border-r-[#4B4051]"></div>
+                                        <p className="text-[9px] font-bold tracking-widest leading-relaxed uppercase text-center">
+                                            Batas maksimum pengisian saldo anda
+                                            bulan ini (Rp5.000.000) telah
+                                            terpenuhi
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -197,7 +253,6 @@ export default function StudentDompet() {
                             </div>
                         ) : (
                             history.map((item) => {
-                                // PERUBAHAN: Cek jika title berisi kata PEMBAYARAN atau DONASI
                                 const isPengeluaran =
                                     item.title
                                         .toUpperCase()
@@ -265,7 +320,6 @@ export default function StudentDompet() {
                         </button>
 
                         <div className="flex flex-col items-center pt-2">
-                            {/* PERUBAHAN: Warna Lingkaran Ikon (Merah untuk Pembayaran & Donasi, Biru untuk Topup) */}
                             <div
                                 className={`w-24 h-24 backdrop-blur-md rounded-full flex items-center justify-center mb-6 shadow-xl border border-white/20 ${selectedTx.title.toUpperCase().includes("PEMBAYARAN") || selectedTx.title.toUpperCase().includes("DONASI") ? "bg-red-500/80 shadow-red-500/30" : "bg-[#4285F4]/90 shadow-[#4285F4]/40"}`}>
                                 <svg
@@ -273,7 +327,6 @@ export default function StudentDompet() {
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24">
-                                    {/* PERUBAHAN: Ikon Dinamis berdasarkan Title Transaksi */}
                                     {selectedTx.title
                                         .toUpperCase()
                                         .includes("DONASI") ? (
@@ -482,7 +535,7 @@ export default function StudentDompet() {
                                             ),
                                         )
                                     }
-                                    placeholder="Rp 10.000 - 1.000.000"
+                                    placeholder="Maksimal Rp 5.000.000"
                                     className="bg-transparent border-b-2 border-white/20 focus:border-[#2D60FF] py-4 px-6 text-white text-center text-3xl font-bold tracking-widest outline-none transition-colors placeholder-white/30"
                                 />
                                 <button
@@ -556,6 +609,36 @@ export default function StudentDompet() {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* 3. POP-UP LIMIT SALDO PENUH (Sesuai Foto 1) */}
+            {/* ========================================================================= */}
+            {showLimitModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6 animate-fade-in-up">
+                    <div className="bg-[#1C3A6B]/80 backdrop-blur-2xl border border-white/20 rounded-[2rem] p-10 w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col items-center text-center">
+                        <p className="text-white font-bold tracking-widest leading-loose text-[11px] uppercase mb-8">
+                            Batas maksimum pengisian
+                            <br />
+                            saldo anda bulan ini
+                            <br />
+                            <span className="text-[#FF4D4D] font-extrabold text-[12px]">
+                                (Rp5.000.000)
+                            </span>
+                            <br />
+                            Telah terpenuhi. Silakan
+                            <br />
+                            lakukan pengisian kembali
+                            <br />
+                            di bulan depan.
+                        </p>
+                        <button
+                            onClick={() => setShowLimitModal(false)}
+                            className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-12 py-3 rounded-full font-bold tracking-widest uppercase transition-all hover:scale-105 outline-none text-xs">
+                            OK
+                        </button>
                     </div>
                 </div>
             )}

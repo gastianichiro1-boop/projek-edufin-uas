@@ -66,8 +66,7 @@ class StudentController extends Controller
         }
         return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
     }
-
-    public function topUp(Request $request, $id)
+public function topUp(Request $request, $id)
     {
         $student = Student::find($id);
         if (!$student) {
@@ -77,11 +76,24 @@ class StudentController extends Controller
         $nominalInput = (int) $request->nominal;
 
         if ($nominalInput > 0) {
+            // Validasi Input Nominal (Minimal 10.000)
             $request->validate([
-                'nominal' => 'required|numeric|min:10000|max:2000000'
+                'nominal' => 'required|numeric|min:10000'
             ]);
+
+            // ====================================================================
+            // FITUR BARU: LIMIT SALDO MAKSIMAL 5 JUTA
+            // ====================================================================
+            if (($student->saldo + $nominalInput) > 5000000) {
+                return response()->json([
+                    'status' => 'error_limit',
+                    'message' => 'Batas maksimum pengisian saldo Anda bulan ini (Rp5.000.000) telah terpenuhi.'
+                ], 403); // Status 403 Forbidden
+            }
+
             $responseMessage = 'Top Up Berhasil';
         } else {
+            // Logika pemotongan saldo (untuk bayar tagihan)
             $request->validate([
                 'nominal' => 'required|numeric'
             ]);
