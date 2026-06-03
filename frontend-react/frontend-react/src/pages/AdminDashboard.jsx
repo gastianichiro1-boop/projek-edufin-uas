@@ -7,6 +7,11 @@ export default function AdminDashboard() {
     const [activeJurusan, setActiveJurusan] = useState("FI");
     const [activeKelas, setActiveKelas] = useState("X");
 
+    // ==========================================
+    // STATE BARU: Untuk menyimpan teks pencarian
+    // ==========================================
+    const [searchTerm, setSearchTerm] = useState("");
+
     // State untuk Interaksi UI Baru
     const [isActionOpen, setIsActionOpen] = useState(false);
     const [actionMode, setActionMode] = useState("none");
@@ -36,12 +41,26 @@ export default function AdminDashboard() {
         fetchStudents();
     }, []);
 
-    // Filter Data
-    const filteredStudents = students.filter(
-        (student) =>
-            student.jurusan?.toUpperCase() === activeJurusan.toUpperCase() &&
-            student.kelas?.toUpperCase() === activeKelas.toUpperCase(),
-    );
+    // ==========================================
+    // PERBAIKAN LOGIKA FILTER: Memasukkan Search Term
+    // ==========================================
+    const filteredStudents = students.filter((student) => {
+        // 1. Cek kecocokan Jurusan & Kelas
+        const matchJurusan =
+            student.jurusan?.toUpperCase() === activeJurusan.toUpperCase();
+        const matchKelas =
+            student.kelas?.toUpperCase() === activeKelas.toUpperCase();
+
+        // 2. Cek kecocokan Kata Kunci (Nama atau NISN)
+        const keyword = searchTerm.toLowerCase();
+        const matchSearch =
+            (student.nama_lengkap &&
+                student.nama_lengkap.toLowerCase().includes(keyword)) ||
+            (student.nisn && student.nisn.toLowerCase().includes(keyword));
+
+        // Tampilkan siswa JIKA cocok semua kriteria
+        return matchJurusan && matchKelas && matchSearch;
+    });
 
     // ================= LOGIKA KLIK GANDA (DOUBLE CLICK) =================
     const handleDoubleClickCancel = () => {
@@ -122,6 +141,8 @@ export default function AdminDashboard() {
                         <input
                             type="text"
                             placeholder="Cari Berdasarkan Nama / NISN"
+                            value={searchTerm} // KABEL SENSOR 1
+                            onChange={(e) => setSearchTerm(e.target.value)} // KABEL SENSOR 2
                             className="w-full bg-[#4E5364] text-white placeholder-gray-300 rounded-full py-3 px-6 pr-12 outline-none border-none focus:ring-2 focus:ring-blue-400"
                         />
                         <svg
@@ -273,8 +294,9 @@ export default function AdminDashboard() {
                                         <td
                                             colSpan="6"
                                             className="py-12 text-center text-gray-400 italic">
-                                            Belum ada data siswa untuk Jurusan{" "}
-                                            {activeJurusan} Kelas {activeKelas}.
+                                            {searchTerm
+                                                ? `Pencarian "${searchTerm}" tidak ditemukan.`
+                                                : `Belum ada data siswa untuk Jurusan ${activeJurusan} Kelas ${activeKelas}.`}
                                         </td>
                                     </tr>
                                 )}
