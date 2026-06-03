@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom"; // <-- INTEGRASI BARU: Jalur Penghubung Halaman
 import SidebarSiswa from "../components/SidebarSiswa";
 
 export default function StudentDashboard() {
+    const navigate = useNavigate(); // Inisialisasi mesin router navigasi
+
     // STATE UI
     const [isContactExpanded, setIsContactExpanded] = useState(false);
     const [selectedNews, setSelectedNews] = useState(null);
@@ -49,7 +52,9 @@ export default function StudentDashboard() {
 
     const fetchNews = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/news`);
+            const res = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/news`,
+            );
             setNewsData(res.data);
         } catch (err) {
             console.error("Gagal ambil berita:", err);
@@ -58,14 +63,14 @@ export default function StudentDashboard() {
                 {
                     id: 1,
                     title: "Presiden Prabowo Turun Tangan Untuk Kunjungan Ke Sekolah di Indonesia",
-                    img: "/images/donasi1.jpg", // <-- TANDAI GAMBAR: Sesuaikan src-nya
+                    img: "/images/donasi1.jpg",
                     content:
-                        "Presiden Republik Indonesia, Bapak Prabowo Subianto, baru-baru ini melakukan kunjungan kerja ke berbagai sekolah vokasi di wilayah Jawa Timur dan Jawa Tengah. Kunjungan ini bertujuan untuk memantau langsung implementasi program Makan Siang Gratis dan memastikan fasilitas pendidikan memadai bagi seluruh siswa di tingkat menengah kejuruan.\n\nDalam kunjungannya, beliau berinteraksi langsung dengan para guru dan siswa, mendengarkan aspirasi mereka terkait kebutuhan alat praktik. Presiden juga menjanjikan tambahan alokasi dana pendidikan pada APBN tahun depan yang dikhususkan untuk memperbaiki infrastruktur sekolah yang sudah tidak layak pakai dan memperbarui alat-alat laboratorium agar sesuai dengan standar industri masa kini.",
+                        "Presiden Republik Indonesia, Bapak Prabowo Subianto, baru-baru ini melakukan kunjungan kerja ke berbagai sekolah vokasi di wilayah Jawa Timur and Jawa Tengah. Kunjungan ini bertujuan untuk memantau langsung implementasi program Makan Siang Gratis dan memastikan fasilitas pendidikan memadai bagi seluruh siswa di tingkat menengah kejuruan.\n\nDalam kunjungannya, beliau berinteraksi langsung dengan para guru dan siswa, mendengarkan aspirasi mereka terkait kebutuhan alat praktik. Presiden juga menjanjikan tambahan alokasi dana pendidikan pada APBN tahun depan yang dikhususkan untuk memperbaiki infrastruktur sekolah yang sudah tidak layak pakai dan memperbarui alat-alat laboratorium agar sesuai dengan standar industri masa kini.",
                 },
                 {
                     id: 2,
                     title: "Gubernur Jawa Timur Mendatangi Sekolah Untuk Bantuan Keuangan",
-                    img: "/images/donasi2.jfif", // <-- TANDAI GAMBAR: Sesuaikan src-nya
+                    img: "/images/donasi2.jfif",
                     content:
                         "Pemerintah Provinsi Jawa Timur terus berkomitmen untuk meningkatkan kualitas pendidikan vokasi. Gubernur Jawa Timur secara resmi telah meluncurkan program Bantuan Keuangan Khusus (BKK) yang ditujukan untuk sekolah-sekolah kejuruan (SMK) di seluruh provinsi. Program strategis ini berfokus pada peningkatan kualitas alat praktik di bengkel dan laboratorium sekolah.\n\nDalam kunjungannya ke SMK Putra Indonesia Malang, Gubernur secara simbolis menyerahkan bantuan senilai Rp 500 juta. Dana tersebut diharapkan dapat langsung digunakan oleh pihak sekolah untuk memperbarui perangkat pembelajaran, sehingga dapat mendukung terciptanya lulusan SMK yang unggul, siap kerja, dan kompeten bersaing di dunia industri global.",
                 },
@@ -88,21 +93,17 @@ export default function StudentDashboard() {
     };
 
     return (
-        // Mengunci layar secara keseluruhan agar tidak bisa di-scroll oleh background
         <div className="h-screen w-full bg-gradient-to-br from-[#02112A] via-[#051C42] to-[#0A2A66] flex font-sans overflow-hidden">
             <SidebarSiswa activeMenu="dashboard" />
 
-            {/* Container utama diatur agar mengisi layar dan mengelola overflow internal */}
             <main className="flex-1 p-4 lg:p-10 flex flex-col lg:grid lg:grid-cols-12 gap-8 lg:gap-10 h-screen overflow-y-auto lg:overflow-hidden custom-scrollbar">
                 {/* ============================================================== */}
                 {/* KOLOM KIRI (Profil & Pemberitahuan) */}
                 {/* ============================================================== */}
                 <div className="lg:col-span-7 flex flex-col gap-6 lg:gap-10 w-full h-full min-h-0 pb-10 lg:pb-0">
-                    {/* --- KOTAK PROFIL (Fixed / Tidak Menyusut) --- */}
+                    {/* --- KOTAK PROFIL --- */}
                     <div className="bg-gradient-to-b from-[#08265E] to-[#06183D] border border-[#16387A] rounded-[2.5rem] p-8 shadow-2xl relative flex-shrink-0">
-                        {/* Bagian Atas: Foto & Nama (Bertumpuk) */}
                         <div className="flex flex-col md:flex-row items-center w-full relative">
-                            {/* Foto */}
                             <div className="w-28 h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-[4px] border-[#08265E] shadow-[0_10px_20px_rgba(0,0,0,0.5)] z-20 flex-shrink-0 bg-gray-800 relative">
                                 <img
                                     src="/images/profil.png"
@@ -115,7 +116,6 @@ export default function StudentDashboard() {
                                 />
                             </div>
 
-                            {/* Kotak Nama & NISN */}
                             <div className="bg-[#10347A] border border-[#1E489E] rounded-3xl py-5 px-8 flex-1 shadow-inner md:-ml-8 md:pl-14 w-full mt-4 md:mt-0 text-center md:text-left z-10">
                                 <h2 className="text-white text-xl lg:text-2xl font-bold tracking-widest mb-2 uppercase drop-shadow-md truncate">
                                     Holla , {studentData.nama_lengkap}
@@ -129,7 +129,7 @@ export default function StudentDashboard() {
                                     </span>
                                     <button
                                         onClick={handleCopyNisn}
-                                        className="text-white/60 hover:text-white transition-colors relative outline-none">
+                                        className="text-white/60 hover:text-white transition-colors relative outline-none cursor-pointer">
                                         <svg
                                             className="w-5 h-5"
                                             fill="none"
@@ -143,7 +143,7 @@ export default function StudentDashboard() {
                                             />
                                         </svg>
                                         {isCopied && (
-                                            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black text-[10px] font-bold py-1 px-2 rounded">
+                                            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black text-[10px] font-bold py-1 px-2 rounded-[0.5rem]">
                                                 Disalin!
                                             </span>
                                         )}
@@ -152,7 +152,6 @@ export default function StudentDashboard() {
                             </div>
                         </div>
 
-                        {/* Bagian Bawah: Badge Kelas & Jurusan */}
                         <div className="flex justify-center gap-6 lg:gap-12 mt-10 w-full pl-0 md:pl-20">
                             <div className="bg-[#184291] border border-[#2B5AC2] rounded-3xl w-24 h-24 lg:w-28 lg:h-28 flex flex-col items-center justify-center shadow-lg transition-transform hover:-translate-y-1">
                                 <svg
@@ -207,13 +206,12 @@ export default function StudentDashboard() {
                         </div>
                     </div>
 
-                    {/* --- KOTAK PEMBERITAHUAN (Otomatis mengisi sisa layar & bisa di-scroll mandiri) --- */}
+                    {/* --- KOTAK PEMBERITAHUAN --- */}
                     <div className="flex-1 flex flex-col min-h-0">
                         <h2 className="text-white text-2xl lg:text-3xl font-bold tracking-[0.15em] mb-4 drop-shadow-md flex-shrink-0">
                             Pemberitahuan
                         </h2>
 
-                        {/* Area yang bisa di-scroll */}
                         <div className="bg-gradient-to-b from-[#08265E] to-[#06183D] border border-[#16387A] rounded-[2.5rem] p-6 lg:p-8 shadow-2xl flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar-light pr-4">
                             {loadingTagihan ? (
                                 <div className="flex-1 flex items-center justify-center">
@@ -221,9 +219,19 @@ export default function StudentDashboard() {
                                 </div>
                             ) : tagihanData.length > 0 ? (
                                 tagihanData.map((tagihan) => (
+                                    /* ============================================================== */
+                                    /* PERBAIKAN: ONCLICK PENGHUBUNG LANGSUNG KE HALAMAN TAGIHAN      */
+                                    /* ============================================================== */
                                     <div
                                         key={tagihan.id}
-                                        className="bg-[#12367A] border border-[#234FA8] rounded-full px-6 py-5 lg:px-8 lg:py-6 flex justify-between items-center shadow-lg transition-transform hover:scale-[1.02] flex-shrink-0">
+                                        onClick={() =>
+                                            navigate("/user/tagihan", {
+                                                state: {
+                                                    autoOpenBill: tagihan,
+                                                },
+                                            })
+                                        }
+                                        className="bg-[#12367A] border border-[#234FA8] rounded-full px-6 py-5 lg:px-8 lg:py-6 flex justify-between items-center shadow-lg transition-all duration-300 hover:scale-[1.02] hover:bg-[#1a4696] cursor-pointer flex-shrink-0">
                                         <div className="text-white">
                                             <p className="font-bold text-sm lg:text-base tracking-widest mb-1 uppercase drop-shadow-sm">
                                                 {tagihan.jenis_tagihan}
@@ -258,7 +266,7 @@ export default function StudentDashboard() {
                 {/* KOLOM KANAN (Kontak & Berita) */}
                 {/* ============================================================== */}
                 <div className="lg:col-span-5 flex flex-col gap-6 lg:gap-10 w-full h-full min-h-0 pb-10 lg:pb-0">
-                    {/* --- KOTAK KONTAK (Fixed) --- */}
+                    {/* --- KOTAK KONTAK --- */}
                     <div className="flex-shrink-0">
                         <h2 className="text-white text-2xl lg:text-3xl font-bold tracking-[0.15em] mb-1 drop-shadow-md">
                             Kontak
@@ -270,7 +278,6 @@ export default function StudentDashboard() {
                         <div className="bg-gradient-to-b from-[#08265E] to-[#06183D] border border-[#16387A] rounded-[2.5rem] p-6 shadow-2xl flex flex-col items-center">
                             <div
                                 className={`w-full flex flex-col gap-4 transition-all duration-500 ease-in-out overflow-hidden ${isContactExpanded ? "max-h-[300px]" : "max-h-[90px]"}`}>
-                                {/* Kontak 1 (Utama) */}
                                 <div className="bg-[#12367A] border border-[#234FA8] rounded-3xl p-5 flex items-center shadow-lg w-full">
                                     <div className="text-white">
                                         <p className="font-bold text-lg tracking-wider mb-1">
@@ -281,7 +288,6 @@ export default function StudentDashboard() {
                                         </p>
                                     </div>
                                 </div>
-                                {/* Kontak 2 (Muncul saat Expand) */}
                                 <div
                                     className={`bg-[#12367A] border border-[#234FA8] rounded-3xl p-5 flex items-center shadow-lg w-full transition-opacity duration-500 ${isContactExpanded ? "opacity-100" : "opacity-0"}`}>
                                     <div className="text-white">
@@ -299,7 +305,7 @@ export default function StudentDashboard() {
                                 onClick={() =>
                                     setIsContactExpanded(!isContactExpanded)
                                 }
-                                className="mt-4 text-white hover:text-blue-300 outline-none">
+                                className="mt-4 text-white hover:text-blue-300 outline-none cursor-pointer">
                                 <svg
                                     className={`w-7 h-7 transition-transform duration-500 ${isContactExpanded ? "rotate-180" : "rotate-0"}`}
                                     fill="none"
@@ -316,7 +322,7 @@ export default function StudentDashboard() {
                         </div>
                     </div>
 
-                    {/* --- KOTAK BERITA (Otomatis mengisi sisa layar & scroll mandiri) --- */}
+                    {/* --- KOTAK BERITA --- */}
                     <div className="flex-1 flex flex-col min-h-0">
                         <h2 className="text-white text-2xl lg:text-3xl font-bold tracking-[0.15em] mb-4 drop-shadow-md flex-shrink-0">
                             Tentang Donasi
@@ -371,7 +377,7 @@ export default function StudentDashboard() {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 lg:p-8">
                     <button
                         onClick={() => setSelectedNews(null)}
-                        className="absolute bottom-6 left-6 bg-[#1C2333] text-white font-bold py-2 px-6 rounded-full border border-white/10 shadow-2xl z-50 text-sm">
+                        className="absolute bottom-6 left-6 bg-[#1C2333] text-white font-bold py-2 px-6 rounded-full border border-white/10 shadow-2xl z-50 text-sm cursor-pointer">
                         Kembali
                     </button>
                     <div className="bg-[#08265E]/90 backdrop-blur-2xl border border-white/30 rounded-[3rem] p-8 max-w-2xl w-full h-[80vh] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col relative animate-fade-in-up">
@@ -400,6 +406,7 @@ export default function StudentDashboard() {
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
                 .custom-scrollbar-light::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar-light::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+                .custom-scrollbar-light::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar-light::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 10px; }
                 .animate-fade-in-up { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
                 @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

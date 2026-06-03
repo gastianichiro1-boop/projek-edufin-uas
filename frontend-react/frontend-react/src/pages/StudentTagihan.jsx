@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; // <-- TAMBAHAN: Untuk menendang siswa ke halaman login
+import { useNavigate, useLocation } from "react-router-dom"; // <-- TAMBAHAN: useLocation
 import SidebarSiswa from "../components/SidebarSiswa";
 
 export default function StudentTagihan() {
-    const navigate = useNavigate(); // Inisialisasi router navigasi
+    const navigate = useNavigate();
+    const location = useLocation(); // Menangkap sinyal dari halaman lain
     const [studentData, setStudentData] = useState({ id: null, saldo: 0 });
     const [bills, setBills] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // STATE MANAJEMEN POP-UP
-    // 0: Tutup, 1: Detail Bayar, 2: PIN, 3: Sukses, 4: OVERDUE, 5: AKUN TERKUNCI KEAMANAN
     const [selectedBill, setSelectedBill] = useState(null);
     const [step, setStep] = useState(0);
 
@@ -27,6 +27,20 @@ export default function StudentTagihan() {
             fetchBills(savedData.id);
         }
     }, []);
+
+    // ==========================================
+    // LOGIKA PENANGKAP SINYAL AUTO-OPEN (DEEP LINK)
+    // ==========================================
+    useEffect(() => {
+        if (location.state && location.state.autoOpenBill) {
+            // Jika ada kiriman data dari dashboard, otomatis buka pop-up bayar!
+            setSelectedBill(location.state.autoOpenBill);
+            setStep(1);
+
+            // Bersihkan sinyal (state) setelah dibuka agar jika halaman direfresh pop-up tidak muncul lagi
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     const fetchBills = async (studentId) => {
         try {
@@ -94,16 +108,15 @@ export default function StudentTagihan() {
         localStorage.removeItem("student_data");
         localStorage.removeItem("role");
         setStep(0);
-        navigate("/login"); // Kembali ke gerbang login utama
+        navigate("/login");
     };
 
-    // --- LOGIKA VERIFIKASI PIN & BAYAR (SUDAH DISINKRONKAN DENGAN AUTOMATIC LOCK) ---
+    // --- LOGIKA VERIFIKASI PIN & BAYAR ---
     const handlePinSubmit = async () => {
         setIsProcessing(true);
         setPinError("");
 
         try {
-            // 1. Verifikasi PIN ke Backend Laravel
             await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/students/verify-pin`,
                 {
@@ -112,12 +125,10 @@ export default function StudentTagihan() {
                 },
             );
 
-            // 2. Tembak API Laravel untuk mengubah status tagihan jadi 'paid' SEKALIGUS potong saldo
             const resPay = await axios.put(
                 `${import.meta.env.VITE_API_BASE_URL}/bills/${selectedBill.id}/pay`,
             );
 
-            // 3. CATAT KE HISTORI TRANSAKSI DOMPET
             await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/transactions`,
                 {
@@ -128,7 +139,6 @@ export default function StudentTagihan() {
                 },
             );
 
-            // 4. Update Saldo di memori lokal
             const updatedStudent = {
                 ...studentData,
                 saldo: resPay.data.data.sisa_saldo,
@@ -139,15 +149,14 @@ export default function StudentTagihan() {
                 JSON.stringify(updatedStudent),
             );
 
-            // 5. Update status tabel lokal agar langsung berubah jadi "Lunas" di layar
             setBills(
                 bills.map((b) =>
                     b.id === selectedBill.id ? { ...b, status: "paid" } : b,
                 ),
             );
 
-            setStep(3); // Pindah ke layar struk sukses
-            setAttempts(3); // Reset percobaan PIN
+            setStep(3);
+            setAttempts(3);
         } catch (error) {
             if (error.response && error.response.status === 401) {
                 const sisaPercobaan = attempts - 1;
@@ -156,7 +165,6 @@ export default function StudentTagihan() {
 
                 if (sisaPercobaan <= 0) {
                     try {
-                        // Tembak API Laravel untuk mengunci status akun di database secara permanen
                         await axios.put(
                             `${import.meta.env.VITE_API_BASE_URL}/students/${studentData.id}/lock`,
                         );
@@ -166,7 +174,7 @@ export default function StudentTagihan() {
                             lockError,
                         );
                     }
-                    setStep(5); // LANGSUNG BUKA POP-UP COCOK DENGAN FOTO 1 (TPA ALERTS)
+                    setStep(5);
                 } else {
                     setPinError(`PIN Salah! Sisa percobaan: ${sisaPercobaan}x`);
                 }
@@ -222,14 +230,16 @@ export default function StudentTagihan() {
                             <table className="w-full text-left border-separate border-spacing-y-4">
                                 <thead className="sticky top-0 bg-[#082753] z-10">
                                     <tr className="text-white/60 text-[10px] lg:text-sm tracking-[0.2em] uppercase font-bold">
-                                        <th className="px-4 pb-4">
+                                        <th className="px-6 pb-4 text-left w-1/4">
                                             Jenis Tagihan
                                         </th>
-                                        <th className="px-4 pb-4">
+                                        <th className="px-6 pb-4 text-center w-1/4">
                                             Jatuh Tempo
                                         </th>
-                                        <th className="px-4 pb-4">Status</th>
-                                        <th className="px-4 pb-4 text-center">
+                                        <th className="px-6 pb-4 text-center w-1/4">
+                                            Status
+                                        </th>
+                                        <th className="px-6 pb-4 text-center w-1/4">
                                             Aksi
                                         </th>
                                     </tr>
@@ -239,17 +249,17 @@ export default function StudentTagihan() {
                                         bills.map((bill) => (
                                             <tr
                                                 key={bill.id}
-                                                className="bg-white/5 hover:bg-white/10 transition-colors">
-                                                <td className="px-4 py-5 rounded-l-2xl text-white font-bold text-sm lg:text-base tracking-wider uppercase">
+                                                className="bg-white/5 hover:bg-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_10px_20px_rgba(0,0,0,0.3)] cursor-pointer">
+                                                <td className="px-6 py-5 rounded-l-[1.5rem] text-white font-bold text-sm lg:text-base tracking-wider uppercase text-left w-1/4">
                                                     {bill.jenis_tagihan}
                                                 </td>
-                                                <td className="px-4 py-5 text-gray-300 font-bold text-xs lg:text-sm tracking-widest">
+                                                <td className="px-6 py-5 text-gray-300 font-bold text-xs lg:text-sm tracking-widest text-center w-1/4">
                                                     {formatTanggal(
                                                         bill.jatuh_tempo,
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-5">
-                                                    <div className="flex items-center gap-2">
+                                                <td className="px-6 py-5 w-1/4">
+                                                    <div className="flex items-center justify-center gap-2">
                                                         <div
                                                             className={`w-2 h-2 lg:w-3 lg:h-3 rounded-full shadow-[0_0_10px] ${bill.status === "paid" ? "bg-[#00FF57] shadow-[#00FF57]" : "bg-[#FF0000] shadow-[#FF0000]"}`}></div>
                                                         <span
@@ -261,7 +271,7 @@ export default function StudentTagihan() {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-5 rounded-r-2xl text-center">
+                                                <td className="px-6 py-5 rounded-r-[1.5rem] text-center w-1/4">
                                                     {bill.status === "paid" ? (
                                                         <button className="bg-green-600 cursor-default text-white text-[9px] lg:text-[10px] font-bold py-2 px-6 rounded-full tracking-widest shadow-lg opacity-80">
                                                             LUNAS
@@ -312,13 +322,13 @@ export default function StudentTagihan() {
             {/* POP-UP 1: DETAIL NORMAL */}
             {step === 1 && selectedBill && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in-up">
-                    <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative">
+                    <div className="bg-[#1C2031] border border-white/10 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative">
                         <button
                             onClick={() => setStep(0)}
                             className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors text-xl">
                             ✕
                         </button>
-                        <h3 className="text-white text-2xl font-bold tracking-widest text-center mb-6 border-b border-white/10 pb-4">
+                        <h3 className="text-white text-2xl font-bold tracking-widest text-center mb-6 border-b border-white/5 pb-4">
                             DETAIL TAGIHAN
                         </h3>
                         <div className="flex flex-col gap-4 mb-8 text-white">
@@ -349,7 +359,7 @@ export default function StudentTagihan() {
                                     )}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10 mt-2">
+                            <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5 mt-2">
                                 <span className="font-bold tracking-widest text-sm">
                                     TOTAL BAYAR
                                 </span>
@@ -365,17 +375,17 @@ export default function StudentTagihan() {
                         {studentData.saldo >= parseInt(selectedBill.nominal) ? (
                             <button
                                 onClick={handleLanjutKePin}
-                                className="w-full bg-[#E42E2E] hover:bg-red-600 text-white font-bold tracking-widest py-4 rounded-full transition-all shadow-lg active:scale-95">
+                                className="w-full bg-[#E42E2E] hover:bg-red-600 text-white font-bold tracking-widest py-4 rounded-full transition-all shadow-lg active:scale-95 outline-none">
                                 BAYAR SEKARANG
                             </button>
                         ) : (
                             <div className="text-center">
                                 <button
                                     disabled
-                                    className="w-full bg-white/5 border border-white/10 text-white/30 font-bold tracking-widest py-4 rounded-full cursor-not-allowed mb-3">
+                                    className="w-full bg-white/5 border border-white/10 text-white/30 font-bold tracking-widest py-4 rounded-full cursor-not-allowed mb-3 outline-none">
                                     SALDO TIDAK CUKUP
                                 </button>
-                                <p className="text-xs text-red-400 italic">
+                                <p className="text-xs text-[#FF4D4D] italic font-medium">
                                     Silakan isi saldo dompet Anda terlebih
                                     dahulu.
                                 </p>
@@ -528,13 +538,10 @@ export default function StudentTagihan() {
                 </div>
             )}
 
-            {/* ========================================================================= */}
-            {/* POP-UP 5: PERINGATAN AKUN TERKUNCI (COCOK DENGAN FOTO 1) */}
-            {/* ========================================================================= */}
+            {/* POP-UP 5: PERINGATAN AKUN TERKUNCI */}
             {step === 5 && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in-up">
                     <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-10 w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.4)] relative flex flex-col items-center text-center">
-                        {/* Ikon Segitiga Tanda Seru Kuning Besar */}
                         <svg
                             className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]"
                             fill="none"
@@ -548,13 +555,11 @@ export default function StudentTagihan() {
                             />
                         </svg>
 
-                        {/* Pesan Blokir Akun */}
                         <p className="text-white font-bold tracking-widest leading-relaxed text-sm max-w-sm mb-8 uppercase">
                             MAAF, AKUN ANDA TERKUNCI, SILAKAN MENUJU TU SEKOLAH
                             UNTUK MEMINTA MEMBUKA AKUN ANDA KEMBALI
                         </p>
 
-                        {/* Tombol Eksekusi Logout */}
                         <button
                             onClick={handleKeluarTerkunci}
                             className="bg-[#2D60FF] hover:bg-blue-600 px-14 py-3.5 rounded-full font-bold text-white shadow-xl transition-all hover:scale-105 tracking-widest text-xs uppercase outline-none">
