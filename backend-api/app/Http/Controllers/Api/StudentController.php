@@ -32,7 +32,7 @@ class StudentController extends Controller
             'jurusan' => $request->jurusan,
             'nama_lengkap' => $request->nama_lengkap,
             'saldo' => 0,
-            'pin' => '123456', // Penanaman PIN Default Otomatis
+            'pin' => '123456', // Penanaman PIN Default Otomatis (Teks Biasa)
         ]);
 
         return response()->json([
@@ -128,8 +128,11 @@ class StudentController extends Controller
 
         $dbPin = (string) $student->pin;
 
-        // Pencocokan PIN
-        if ($request->pin === $dbPin || Hash::check($request->pin, $dbPin)) {
+        // ====================================================================
+        // PERBAIKAN FATAL: HANYA MENGGUNAKAN PENCOCOKAN STRING BIASA
+        // Menghapus Hash::check() agar tidak terjadi Error Bcrypt Algorithm!
+        // ====================================================================
+        if ($request->pin === $dbPin) {
             return response()->json(['status' => 'success', 'message' => 'PIN Benar'], 200);
         } else {
             // Melempar Error 401 agar UI React bisa memunculkan sisa hitung mundur!
