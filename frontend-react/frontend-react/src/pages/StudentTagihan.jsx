@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate, useLocation } from "react-router-dom"; // <-- TAMBAHAN: useLocation
+import { useNavigate, useLocation } from "react-router-dom";
 import SidebarSiswa from "../components/SidebarSiswa";
 
 export default function StudentTagihan() {
     const navigate = useNavigate();
-    const location = useLocation(); // Menangkap sinyal dari halaman lain
+    const location = useLocation();
     const [studentData, setStudentData] = useState({ id: null, saldo: 0 });
     const [bills, setBills] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -28,16 +28,11 @@ export default function StudentTagihan() {
         }
     }, []);
 
-    // ==========================================
-    // LOGIKA PENANGKAP SINYAL AUTO-OPEN (DEEP LINK)
-    // ==========================================
+    // LOGIKA PENANGKAP SINYAL AUTO-OPEN (DEEP LINK DARI DASHBOARD)
     useEffect(() => {
         if (location.state && location.state.autoOpenBill) {
-            // Jika ada kiriman data dari dashboard, otomatis buka pop-up bayar!
             setSelectedBill(location.state.autoOpenBill);
             setStep(1);
-
-            // Bersihkan sinyal (state) setelah dibuka agar jika halaman direfresh pop-up tidak muncul lagi
             window.history.replaceState({}, document.title);
         }
     }, [location]);
@@ -56,7 +51,6 @@ export default function StudentTagihan() {
         }
     };
 
-    // --- FUNGSI FORMAT TANGGAL ---
     const formatTanggal = (tanggal) => {
         if (!tanggal) return "-";
         const dateObj = new Date(tanggal);
@@ -77,7 +71,6 @@ export default function StudentTagihan() {
         return `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
     };
 
-    // --- FUNGSI CEK JATUH TEMPO ---
     const isOverdue = (tanggal) => {
         if (!tanggal) return false;
         const dueDate = new Date(tanggal);
@@ -86,7 +79,6 @@ export default function StudentTagihan() {
         return now > dueDate;
     };
 
-    // --- LOGIKA INTERAKSI ---
     const handleBukaDetail = (bill) => {
         setSelectedBill(bill);
         setStep(1);
@@ -103,7 +95,6 @@ export default function StudentTagihan() {
         setPinError("");
     };
 
-    // --- FUNGSI TOMBOL KELUAR JIKA AKUN TERKUNCI ---
     const handleKeluarTerkunci = () => {
         localStorage.removeItem("student_data");
         localStorage.removeItem("role");
@@ -111,7 +102,6 @@ export default function StudentTagihan() {
         navigate("/login");
     };
 
-    // --- LOGIKA VERIFIKASI PIN & BAYAR ---
     const handlePinSubmit = async () => {
         setIsProcessing(true);
         setPinError("");
@@ -227,19 +217,19 @@ export default function StudentTagihan() {
                                 <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
                             </div>
                         ) : (
-                            <table className="w-full text-left border-separate border-spacing-y-4">
-                                <thead className="sticky top-0 bg-[#082753] z-10">
-                                    <tr className="text-white/60 text-[10px] lg:text-sm tracking-[0.2em] uppercase font-bold">
-                                        <th className="px-6 pb-4 text-left w-1/4">
+                            <table className="w-full text-left border-separate border-spacing-y-3">
+                                <thead className="sticky top-0 z-10">
+                                    <tr className="text-white/60 text-[10px] lg:text-xs tracking-[0.2em] uppercase font-bold">
+                                        <th className="px-8 pb-4 text-left w-1/4">
                                             Jenis Tagihan
                                         </th>
-                                        <th className="px-6 pb-4 text-center w-1/4">
+                                        <th className="px-8 pb-4 text-center w-1/4">
                                             Jatuh Tempo
                                         </th>
-                                        <th className="px-6 pb-4 text-center w-1/4">
+                                        <th className="px-8 pb-4 text-center w-1/4">
                                             Status
                                         </th>
-                                        <th className="px-6 pb-4 text-center w-1/4">
+                                        <th className="px-8 pb-4 text-center w-1/4">
                                             Aksi
                                         </th>
                                     </tr>
@@ -249,16 +239,16 @@ export default function StudentTagihan() {
                                         bills.map((bill) => (
                                             <tr
                                                 key={bill.id}
-                                                className="bg-white/5 hover:bg-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_10px_20px_rgba(0,0,0,0.3)] cursor-pointer">
-                                                <td className="px-6 py-5 rounded-l-[1.5rem] text-white font-bold text-sm lg:text-base tracking-wider uppercase text-left w-1/4">
+                                                className="bg-white/5 hover:bg-[#1C4188]/40 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_15px_30px_rgba(0,0,0,0.4)] cursor-pointer">
+                                                <td className="px-8 py-5 rounded-l-[1.5rem] text-white font-bold text-sm lg:text-base tracking-wider uppercase text-left w-1/4">
                                                     {bill.jenis_tagihan}
                                                 </td>
-                                                <td className="px-6 py-5 text-gray-300 font-bold text-xs lg:text-sm tracking-widest text-center w-1/4">
+                                                <td className="px-8 py-5 text-gray-300 font-bold text-xs lg:text-sm tracking-widest text-center w-1/4">
                                                     {formatTanggal(
                                                         bill.jatuh_tempo,
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-5 w-1/4">
+                                                <td className="px-8 py-5 w-1/4">
                                                     <div className="flex items-center justify-center gap-2">
                                                         <div
                                                             className={`w-2 h-2 lg:w-3 lg:h-3 rounded-full shadow-[0_0_10px] ${bill.status === "paid" ? "bg-[#00FF57] shadow-[#00FF57]" : "bg-[#FF0000] shadow-[#FF0000]"}`}></div>
@@ -271,7 +261,7 @@ export default function StudentTagihan() {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-5 rounded-r-[1.5rem] text-center w-1/4">
+                                                <td className="px-8 py-5 rounded-r-[1.5rem] text-center w-1/4">
                                                     {bill.status === "paid" ? (
                                                         <button className="bg-green-600 cursor-default text-white text-[9px] lg:text-[10px] font-bold py-2 px-6 rounded-full tracking-widest shadow-lg opacity-80">
                                                             LUNAS
@@ -295,7 +285,7 @@ export default function StudentTagihan() {
                                                                     bill,
                                                                 )
                                                             }
-                                                            className="bg-[#E42E2E] hover:bg-red-600 text-white text-[9px] lg:text-[10px] font-bold py-2 px-6 rounded-full tracking-widest transition-transform hover:scale-105 shadow-lg animate-pulse">
+                                                            className="bg-[#E42E2E] hover:bg-red-600 text-white text-[9px] lg:text-[10px] font-bold py-2 px-6 rounded-full tracking-widest transition-transform hover:scale-105 shadow-[0_5px_15px_rgba(228,46,46,0.4)] animate-pulse">
                                                             BAYAR
                                                         </button>
                                                     )}
