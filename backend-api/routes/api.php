@@ -17,6 +17,13 @@ use Illuminate\Support\Facades\Artisan;
 // 1. Rute Terbuka (Publik) - Siapapun bisa akses untuk Login
 Route::post('/edufin-login', [EdufinAuthController::class, 'login']);
 
+// ====================================================================
+// RUTE KHUSUS (HARUS DI ATAS RUTE DINAMIS {id})
+// ====================================================================
+// Fitur Edit Akun Siswa Secara Massal
+Route::put('/students/bulk-update', [StudentController::class, 'bulkUpdate']);
+
+
 // 2. Rute Fitur Utama EDUFIN
 Route::post('/create-student', [StudentController::class, 'store']);
 Route::get('/students', [StudentController::class, 'index']);
@@ -37,11 +44,6 @@ Route::get('/bills/student/{student_id}', [BillController::class, 'getStudentBil
 Route::post('/bills', [BillController::class, 'store']);
 Route::put('/bills/{id}/pay', [BillController::class, 'payBill']);
 
-//6. Lock Akun Bila Pin 3 X Salah
+// 6. Lock Akun Bila Pin 3 X Salah
 Route::put('/students/{id}/lock', [StudentController::class, 'lockAccount']);
 Route::put('/students/{id}/unlock', [StudentController::class, 'unlockAccount']);
-
-//7. Fitur Edit Akun Siswa Secara Massal
-Route::put('/students/bulk-update', [StudentController::class, 'bulkUpdate']);
-
-
