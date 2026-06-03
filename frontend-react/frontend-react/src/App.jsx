@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AutoLogout from "./components/AutoLogout"; // <-- Robot Pengawas 5 Menit di-import di sini
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -13,6 +14,9 @@ import StudentDonasi from "./pages/StudentDonasi";
 function App() {
     return (
         <BrowserRouter>
+            {/* Robot Pengawas Sesi: Dipasang sebelum Routes agar mengawasi semua halaman */}
+            <AutoLogout />
+
             <Routes>
                 {/* Rute Halaman Utama */}
                 <Route path="/" element={<LandingPage />} />
@@ -22,24 +26,15 @@ function App() {
 
                 {/* Rute Admin Dashboard sekarang sudah aman diakses */}
                 <Route path="/admin" element={<AdminDashboard />} />
-
                 <Route path="/admin/tagihan" element={<AdminTagihan />} />
-
                 <Route path="/admin/buat-akun" element={<AdminBuatAkun />} />
 
+                {/* Rute Halaman Siswa */}
                 <Route path="/user" element={<StudentDashboard />} />
-
                 <Route path="/user/dompet" element={<StudentDompet />} />
-
                 <Route path="/user/tagihan" element={<StudentTagihan />} />
-
                 <Route path="/user/cs" element={<StudentCS />} />
-
                 <Route path="/user/donasi" element={<StudentDonasi />} />
-
-                {/* Rute Dashboard kita nonaktifkan sementara */}
-                {/* <Route path="/admin" element={<AdminDashboard />} /> */}
-                {/* <Route path="/user" element={<UserDashboard />} /> */}
             </Routes>
         </BrowserRouter>
     );
