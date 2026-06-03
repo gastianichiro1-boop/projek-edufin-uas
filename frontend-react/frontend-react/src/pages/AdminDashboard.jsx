@@ -8,13 +8,17 @@ export default function AdminDashboard() {
     const [activeKelas, setActiveKelas] = useState("X");
 
     // State untuk Interaksi UI Baru
-    const [isActionOpen, setIsActionOpen] = useState(false); // Membuka sub-bar action
-    const [actionMode, setActionMode] = useState("none"); // 'none', 'delete', atau 'edit'
+    const [isActionOpen, setIsActionOpen] = useState(false);
+    const [actionMode, setActionMode] = useState("none");
 
     // State untuk Pop-up Modals
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [selectedStudent, setSelectedStudent] = useState(null); // Menyimpan data siswa yang dipilih
+    const [selectedStudent, setSelectedStudent] = useState(null);
+
+    // STATE UNTUK POP-UP BUKA KUNCI
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [studentToUnlock, setStudentToUnlock] = useState(null);
 
     // Menarik data dari Laravel
     const fetchStudents = async () => {
@@ -45,7 +49,23 @@ export default function AdminDashboard() {
         setActionMode("none");
         setShowDeleteModal(false);
         setShowEditModal(false);
+        setShowUnlockModal(false);
         setSelectedStudent(null);
+        setStudentToUnlock(null);
+    };
+
+    // ================= LOGIKA BUKA KUNCI AKUN (UNLOCK) =================
+    const confirmUnlock = async () => {
+        if (!studentToUnlock) return;
+        try {
+            await axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/students/${studentToUnlock.id}/unlock`,
+            );
+            fetchStudents(); // Refresh data
+            handleDoubleClickCancel(); // Tutup modal
+        } catch (error) {
+            alert("Gagal membuka kunci akun!");
+        }
     };
 
     // ================= LOGIKA HAPUS (DELETE) =================
@@ -55,8 +75,8 @@ export default function AdminDashboard() {
             await axios.delete(
                 `${import.meta.env.VITE_API_BASE_URL}/students/${selectedStudent.id}`,
             );
-            fetchStudents(); // Refresh data
-            handleDoubleClickCancel(); // Tutup semua pop-up
+            fetchStudents();
+            handleDoubleClickCancel();
         } catch (error) {
             alert("Gagal menghapus data!");
         }
@@ -77,8 +97,8 @@ export default function AdminDashboard() {
                 `${import.meta.env.VITE_API_BASE_URL}/students/${selectedStudent.id}`,
                 selectedStudent,
             );
-            fetchStudents(); // Refresh data
-            handleDoubleClickCancel(); // Tutup semua pop-up
+            fetchStudents();
+            handleDoubleClickCancel();
             alert(
                 "Data berhasil diperbarui! Siswa sekarang bisa login pakai NISN baru.",
             );
@@ -90,7 +110,6 @@ export default function AdminDashboard() {
     };
 
     return (
-        // Event onDoubleClick dipasang di pembungkus paling luar agar bisa diklik di mana saja
         <div
             className="min-h-screen w-full bg-[#023474] flex font-sans"
             onDoubleClick={handleDoubleClickCancel}>
@@ -151,6 +170,8 @@ export default function AdminDashboard() {
                                     <th className="py-4 text-xl font-bold">
                                         Kelas
                                     </th>
+                                    <th className="py-4 w-12 text-center"></th>{" "}
+                                    {/* Header kosong untuk ikon peringatan */}
                                     <th className="py-4 text-right">
                                         <div className="bg-[#1C2031] inline-block px-3 py-2 rounded-lg text-xs font-bold text-center leading-tight">
                                             Total siswa
@@ -179,10 +200,37 @@ export default function AdminDashboard() {
                                             <td className="py-6 font-bold text-lg">
                                                 {student.kelas}
                                             </td>
-                                            <td className="py-6 text-right">
-                                                {/* Munculkan tombol aksi di tabel sesuai mode yang dipilih di pojok kanan bawah */}
+
+                                            {/* IKON PERINGATAN KUNING JIKA AKUN TERKUNCI */}
+                                            <td className="py-6 text-center">
+                                                {student.is_locked && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setStudentToUnlock(
+                                                                student,
+                                                            );
+                                                            setShowUnlockModal(
+                                                                true,
+                                                            );
+                                                        }}
+                                                        className="text-yellow-500 hover:text-yellow-400 hover:scale-110 transition-transform outline-none">
+                                                        <svg
+                                                            className="w-7 h-7 drop-shadow-md mx-auto"
+                                                            fill="currentColor"
+                                                            viewBox="0 0 20 20">
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                                clipRule="evenodd"
+                                                            />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </td>
+
+                                            <td className="py-6 text-right relative">
                                                 <div
-                                                    className={`transition-opacity duration-300 ${actionMode !== "none" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+                                                    className={`absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-3 transition-all duration-300 ${actionMode !== "none" ? "opacity-100 z-10" : "opacity-0 pointer-events-none -z-10"}`}>
                                                     {actionMode ===
                                                         "delete" && (
                                                         <button
@@ -194,7 +242,7 @@ export default function AdminDashboard() {
                                                                     true,
                                                                 );
                                                             }}
-                                                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-5 rounded-full text-sm shadow-lg transition-transform hover:scale-105">
+                                                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-5 rounded-full text-sm shadow-lg transition-transform hover:scale-105">
                                                             HAPUS
                                                         </button>
                                                     )}
@@ -207,12 +255,12 @@ export default function AdminDashboard() {
                                                                         password:
                                                                             "",
                                                                     },
-                                                                ); // Set password kosong untuk jaga-jaga
+                                                                );
                                                                 setShowEditModal(
                                                                     true,
                                                                 );
                                                             }}
-                                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-5 rounded-full text-sm shadow-lg transition-transform hover:scale-105">
+                                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-5 rounded-full text-sm shadow-lg transition-transform hover:scale-105">
                                                             EDIT
                                                         </button>
                                                     )}
@@ -223,7 +271,7 @@ export default function AdminDashboard() {
                                 ) : (
                                     <tr>
                                         <td
-                                            colSpan="5"
+                                            colSpan="6"
                                             className="py-12 text-center text-gray-400 italic">
                                             Belum ada data siswa untuk Jurusan{" "}
                                             {activeJurusan} Kelas {activeKelas}.
@@ -255,12 +303,9 @@ export default function AdminDashboard() {
                         </button>
                     </div>
 
-                    {/* Area Floating Action Buttons */}
                     <div className="flex items-center gap-3">
-                        {/* Sub-bar Aksi (Tersembunyi sampai Pensil Besar diklik) */}
                         <div
                             className={`flex items-center gap-3 transition-all duration-500 ease-out ${isActionOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"}`}>
-                            {/* Tombol Hapus (Merah) */}
                             <button
                                 onClick={() => setActionMode("delete")}
                                 className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-lg ${actionMode === "delete" ? "bg-red-600/30 border-2 border-red-500" : "bg-[#1C2031] hover:bg-red-600/20"}`}>
@@ -277,8 +322,6 @@ export default function AdminDashboard() {
                                     />
                                 </svg>
                             </button>
-
-                            {/* Tombol Edit (Biru) */}
                             <button
                                 onClick={() => setActionMode("edit")}
                                 className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-lg ${actionMode === "edit" ? "bg-blue-600/30 border-2 border-blue-500" : "bg-[#1C2031] hover:bg-blue-600/20"}`}>
@@ -296,12 +339,10 @@ export default function AdminDashboard() {
                                 </svg>
                             </button>
                         </div>
-
-                        {/* Tombol Pensil Besar Utama */}
                         <button
                             onClick={() => {
                                 setIsActionOpen(!isActionOpen);
-                                if (isActionOpen) setActionMode("none"); // Reset mode jika sub-bar ditutup
+                                if (isActionOpen) setActionMode("none");
                             }}
                             className="w-14 h-14 bg-[#1E2235] border-2 border-white rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-transform z-10">
                             {isActionOpen ? (
@@ -336,7 +377,34 @@ export default function AdminDashboard() {
                 </div>
             </main>
 
-            {/* ================= MODAL HAPUS (Sesuai Foto 2) ================= */}
+            {/* ================= MODAL BUKA KUNCI (UNLOCK) ================= */}
+            {showUnlockModal && studentToUnlock && (
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity animate-fade-in-up"
+                    onDoubleClick={handleDoubleClickCancel}>
+                    <div
+                        className="bg-[#4E5364] rounded-[2rem] p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center border border-white/10"
+                        onDoubleClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-white font-bold tracking-widest text-sm mb-8 uppercase leading-relaxed">
+                            APAKAH INGIN MEMBUKA <br /> AKUN SISWA TERSEBUT ?
+                        </h3>
+                        <div className="flex gap-4 w-full justify-center">
+                            <button
+                                onClick={() => setShowUnlockModal(false)}
+                                className="bg-[#4285F4] hover:bg-blue-600 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg transition-transform hover:scale-105 outline-none">
+                                Tidak
+                            </button>
+                            <button
+                                onClick={confirmUnlock}
+                                className="bg-[#FF0000] hover:bg-red-700 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg transition-transform hover:scale-105 outline-none">
+                                Iya
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= MODAL HAPUS ================= */}
             {showDeleteModal && (
                 <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity"
@@ -345,9 +413,8 @@ export default function AdminDashboard() {
                         className="bg-[#282C3E] rounded-[3rem] p-12 max-w-lg w-full shadow-2xl flex flex-col items-center text-center border border-white/10"
                         onDoubleClick={(e) => e.stopPropagation()}>
                         <h2 className="text-white font-bold mb-8 uppercase tracking-wide text-lg leading-relaxed">
-                            Tindakan ini akan mengapus
-                            <br />
-                            seluruh data akun, apakah anda yakin ?
+                            Tindakan ini akan mengapus <br /> seluruh data akun,
+                            apakah anda yakin ?
                         </h2>
                         <button
                             onClick={confirmDelete}
@@ -372,7 +439,6 @@ export default function AdminDashboard() {
                         <h2 className="text-white text-2xl font-bold mb-8 text-center uppercase tracking-wide">
                             Edit Data Siswa
                         </h2>
-
                         <form
                             onSubmit={confirmEdit}
                             className="flex flex-col gap-4">
@@ -402,7 +468,6 @@ export default function AdminDashboard() {
                                 placeholder="Password Baru (Kosongkan jika tidak diubah)"
                                 className="w-full bg-transparent border border-white/30 rounded-full py-3 px-6 text-white focus:outline-none focus:border-blue-400"
                             />
-
                             <div className="flex gap-4">
                                 <select
                                     name="kelas"
@@ -432,7 +497,6 @@ export default function AdminDashboard() {
                                     </option>
                                 </select>
                             </div>
-
                             <div className="mt-6 flex gap-4 justify-center">
                                 <button
                                     type="submit"
@@ -447,6 +511,14 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
+
+            <style>{`
+                .animate-fade-in-up { animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+            `}</style>
         </div>
     );
 }

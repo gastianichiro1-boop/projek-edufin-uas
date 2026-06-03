@@ -10,6 +10,9 @@ const Login = () => {
     const [nisn, setNisn] = useState("");
     const [password, setPassword] = useState("");
 
+    // State untuk Pop-up Akun Terkunci (Gembok)
+    const [isLockedPopup, setIsLockedPopup] = useState(false);
+
     // Fungsi saat tombol Login ditekan
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -37,28 +40,30 @@ const Login = () => {
                     "student_data",
                     JSON.stringify(response.data.data),
                 );
-
                 navigate("/user");
             } else {
-                alert(
-                    "Terhubung ke server, tapi role tidak dikenali. Cek isi datanya: " +
-                        JSON.stringify(response.data),
-                );
+                alert("Terhubung ke server, tapi role tidak dikenali.");
             }
         } catch (error) {
-            alert(
-                "Gagal Login: " +
-                    (error.response?.data?.message ||
-                        "Terjadi kesalahan sistem atau server mati"),
-            );
+            // CEK JIKA STATUS ERROR 403 (FORBIDDEN) DAN AKUN TERKUNCI
+            if (
+                error.response?.status === 403 &&
+                error.response?.data?.is_locked
+            ) {
+                setIsLockedPopup(true);
+            } else {
+                alert(
+                    "Gagal Login: " +
+                        (error.response?.data?.message ||
+                            "Terjadi kesalahan sistem atau server mati"),
+                );
+            }
         }
     };
 
     return (
-        // PERBAIKAN 1: Gunakan min-h-[100dvh] agar aman dari address bar browser HP
-        <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1220] p-4 sm:p-6 font-sans">
-            {/* PERBAIKAN 2: Padding dan rounding dikecilkan di HP (p-6), normal di laptop (sm:p-10) */}
-            <div className="bg-[#1C2333] w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 flex flex-col items-center shadow-2xl border border-gray-800/50">
+        <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1220] p-4 sm:p-6 font-sans relative overflow-hidden">
+            <div className="bg-[#1C2333] w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 flex flex-col items-center shadow-2xl border border-gray-800/50 relative z-10">
                 {/* Logo */}
                 <div className="w-14 h-14 sm:w-16 sm:h-16 mb-4">
                     <div className="w-full h-full bg-[#2D60FF] rounded-2xl flex items-center justify-center shadow-lg">
@@ -93,7 +98,6 @@ const Login = () => {
                             placeholder="NISN"
                             value={nisn}
                             onChange={(e) => setNisn(e.target.value)}
-                            // PERBAIKAN 3: Text input lebih kecil di HP (text-sm), padding dikurangi sedikit
                             className="w-full bg-transparent border-2 border-white/90 text-white rounded-full py-3 sm:py-3.5 pl-11 sm:pl-12 pr-4 text-sm sm:text-base focus:outline-none focus:border-[#4285F4] transition-colors placeholder-white/80 font-medium"
                             required
                         />
@@ -169,6 +173,46 @@ const Login = () => {
                     </button>
                 </form>
             </div>
+
+            {/* ========================================================================= */}
+            {/* POP-UP AKUN TERKUNCI (Sesuai Foto 2) */}
+            {/* ========================================================================= */}
+            {isLockedPopup && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in-up">
+                    <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-10 w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative flex flex-col items-center text-center">
+                        {/* Ikon Segitiga Kuning */}
+                        <svg
+                            className="w-20 h-20 text-yellow-500 mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.4)]"
+                            fill="currentColor"
+                            viewBox="0 0 20 20">
+                            <path
+                                fillRule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                clipRule="evenodd"
+                            />
+                        </svg>
+
+                        <p className="text-white font-bold tracking-widest leading-relaxed text-xs mb-8 uppercase">
+                            MAAF, AKUN ANDA TERKUNCI, SILAKAN MENUJU TU SEKOLAH
+                            UNTUK MEMINTA MEMBUKA AKUN ANDA KEMBALI
+                        </p>
+
+                        <button
+                            onClick={() => setIsLockedPopup(false)}
+                            className="bg-[#4E5364] hover:bg-gray-600 px-10 py-3 rounded-full font-bold text-white shadow-lg transition-transform hover:scale-105 tracking-widest text-xs uppercase outline-none">
+                            KELUAR
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                .animate-fade-in-up { animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+            `}</style>
         </div>
     );
 };

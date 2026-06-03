@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom"; // <-- TAMBAHAN: Untuk menendang siswa ke halaman login
 import SidebarSiswa from "../components/SidebarSiswa";
 
 export default function StudentTagihan() {
+    const navigate = useNavigate(); // Inisialisasi router navigasi
     const [studentData, setStudentData] = useState({ id: null, saldo: 0 });
     const [bills, setBills] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // STATE MANAJEMEN POP-UP
+    // 0: Tutup, 1: Detail Bayar, 2: PIN, 3: Sukses, 4: OVERDUE, 5: AKUN TERKUNCI KEAMANAN
     const [selectedBill, setSelectedBill] = useState(null);
-    const [step, setStep] = useState(0); // 0: Tutup, 1: Detail Bayar, 2: PIN, 3: Sukses, 4: OVERDUE (Jatuh Tempo)
+    const [step, setStep] = useState(0);
 
     // STATE PIN
     const [pin, setPin] = useState("");
@@ -86,7 +89,15 @@ export default function StudentTagihan() {
         setPinError("");
     };
 
-    // --- LOGIKA VERIFIKASI PIN & BAYAR (SUDAH DISINKRONKAN DENGAN LARAVEL) ---
+    // --- FUNGSI TOMBOL KELUAR JIKA AKUN TERKUNCI ---
+    const handleKeluarTerkunci = () => {
+        localStorage.removeItem("student_data");
+        localStorage.removeItem("role");
+        setStep(0);
+        navigate("/login"); // Kembali ke gerbang login utama
+    };
+
+    // --- LOGIKA VERIFIKASI PIN & BAYAR (SUDAH DISINKRONKAN DENGAN AUTOMATIC LOCK) ---
     const handlePinSubmit = async () => {
         setIsProcessing(true);
         setPinError("");
@@ -101,7 +112,7 @@ export default function StudentTagihan() {
                 },
             );
 
-            // 2. Tembak API Laravel untuk mengubah status tagihan jadi 'paid' SEKALIGUS potong saldo (Mengikuti Solusi 2 yang Aman)
+            // 2. Tembak API Laravel untuk mengubah status tagihan jadi 'paid' SEKALIGUS potong saldo
             const resPay = await axios.put(
                 `${import.meta.env.VITE_API_BASE_URL}/bills/${selectedBill.id}/pay`,
             );
@@ -117,7 +128,7 @@ export default function StudentTagihan() {
                 },
             );
 
-            // 4. Update Saldo di memori lokal menggunakan data 'sisa_saldo' dari response payload BillController
+            // 4. Update Saldo di memori lokal
             const updatedStudent = {
                 ...studentData,
                 saldo: resPay.data.data.sisa_saldo,
@@ -144,14 +155,22 @@ export default function StudentTagihan() {
                 setPin("");
 
                 if (sisaPercobaan <= 0) {
-                    alert("PIN Terblokir karena salah 3x. Hubungi Admin.");
-                    setStep(0);
-                    setAttempts(3);
+                    try {
+                        // Tembak API Laravel untuk mengunci status akun di database secara permanen
+                        await axios.put(
+                            `${import.meta.env.VITE_API_BASE_URL}/students/${studentData.id}/lock`,
+                        );
+                    } catch (lockError) {
+                        console.error(
+                            "Gagal mengirim perintah kunci akun ke server:",
+                            lockError,
+                        );
+                    }
+                    setStep(5); // LANGSUNG BUKA POP-UP COCOK DENGAN FOTO 1 (TPA ALERTS)
                 } else {
                     setPinError(`PIN Salah! Sisa percobaan: ${sisaPercobaan}x`);
                 }
             } else {
-                // Menampilkan pesan error spesifik dari server jika ada (misal: saldo tidak cukup)
                 const errorMessage =
                     error.response?.data?.message ||
                     "Gagal memproses pembayaran ke server. Pastikan koneksi stabil.";
@@ -504,6 +523,42 @@ export default function StudentTagihan() {
                             onClick={() => setStep(0)}
                             className="w-full bg-[#1C4188]/60 hover:bg-[#1C4188] text-white font-bold tracking-widest py-4 rounded-full transition-all shadow-lg border border-blue-400/30 outline-none backdrop-blur-md">
                             MENGERTI
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* POP-UP 5: PERINGATAN AKUN TERKUNCI (COCOK DENGAN FOTO 1) */}
+            {/* ========================================================================= */}
+            {step === 5 && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in-up">
+                    <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-10 w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.4)] relative flex flex-col items-center text-center">
+                        {/* Ikon Segitiga Tanda Seru Kuning Besar */}
+                        <svg
+                            className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.8}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                        </svg>
+
+                        {/* Pesan Blokir Akun */}
+                        <p className="text-white font-bold tracking-widest leading-relaxed text-sm max-w-sm mb-8 uppercase">
+                            MAAF, AKUN ANDA TERKUNCI, SILAKAN MENUJU TU SEKOLAH
+                            UNTUK MEMINTA MEMBUKA AKUN ANDA KEMBALI
+                        </p>
+
+                        {/* Tombol Eksekusi Logout */}
+                        <button
+                            onClick={handleKeluarTerkunci}
+                            className="bg-[#2D60FF] hover:bg-blue-600 px-14 py-3.5 rounded-full font-bold text-white shadow-xl transition-all hover:scale-105 tracking-widest text-xs uppercase outline-none">
+                            KELUAR
                         </button>
                     </div>
                 </div>
