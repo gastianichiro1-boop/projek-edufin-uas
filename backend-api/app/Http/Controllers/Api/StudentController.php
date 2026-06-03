@@ -217,4 +217,26 @@ class StudentController extends Controller
             return response()->json(['message' => 'Tidak ada data siswa yang cocok untuk diubah.'], 404);
         }
     }
+
+    // ====================================================================
+    // FITUR BARU: HAPUS MASSAL (BULK DELETE)
+    // ====================================================================
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'kelas' => 'required',
+            'jurusan' => 'required',
+        ]);
+
+        // Menghapus permanen seluruh data siswa yang cocok dengan kriteria
+        $deletedCount = Student::where('kelas', $request->kelas)
+                               ->where('jurusan', $request->jurusan)
+                               ->delete();
+
+        if ($deletedCount > 0) {
+            return response()->json(['message' => "$deletedCount data akun siswa berhasil dihapus permanen!"], 200);
+        } else {
+            return response()->json(['message' => 'Tidak ada data siswa yang cocok untuk dihapus.'], 404);
+        }
+    }
 }

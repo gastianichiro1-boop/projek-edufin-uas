@@ -22,7 +22,7 @@ export default function AdminDashboard() {
     const [studentToUnlock, setStudentToUnlock] = useState(null);
 
     // ==========================================
-    // STATE BARU: FITUR EDIT SELURUH SISWA (BULK UPDATE)
+    // STATE FITUR EDIT SELURUH SISWA (BULK UPDATE)
     // ==========================================
     const [showBulkEditModal, setShowBulkEditModal] = useState(false);
     const [bulkEditData, setBulkEditData] = useState({
@@ -31,6 +31,14 @@ export default function AdminDashboard() {
         jurusanAwal: "",
         jurusanAkhir: "",
     });
+
+    // ==========================================
+    // STATE BARU: FITUR HAPUS MASSAL (BULK DELETE)
+    // ==========================================
+    const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+    const [showBulkDeleteConfirmModal, setShowBulkDeleteConfirmModal] = useState(false);
+    const [bulkDeleteData, setBulkDeleteData] = useState({ kelas: "", jurusan: "" });
+    const [deleteCountdown, setDeleteCountdown] = useState(5);
 
     // Menarik data dari Laravel
     const fetchStudents = async () => {
@@ -48,6 +56,15 @@ export default function AdminDashboard() {
         fetchStudents();
     }, []);
 
+    // TIMER UNTUK TOMBOL IYA (HAPUS MASSAL)
+    useEffect(() => {
+        let timer;
+        if (showBulkDeleteConfirmModal && deleteCountdown > 0) {
+            timer = setTimeout(() => setDeleteCountdown(deleteCountdown - 1), 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [showBulkDeleteConfirmModal, deleteCountdown]);
+
     // Filter Data (Pencarian, Kelas, Jurusan)
     const filteredStudents = students.filter((student) => {
         const matchJurusan =
@@ -63,7 +80,7 @@ export default function AdminDashboard() {
         return matchJurusan && matchKelas && matchSearch;
     });
 
-    // ================= LOGIKA KLIK GANDA (Batal) =================
+    // ================= LOGIKA KLIK GANDA (Batal & Reset) =================
     const handleDoubleClickCancel = () => {
         setIsActionOpen(false);
         setActionMode("none");
@@ -71,6 +88,8 @@ export default function AdminDashboard() {
         setShowEditModal(false);
         setShowUnlockModal(false);
         setShowBulkEditModal(false);
+        setShowBulkDeleteModal(false);
+        setShowBulkDeleteConfirmModal(false);
         setSelectedStudent(null);
         setStudentToUnlock(null);
         setBulkEditData({
@@ -79,6 +98,8 @@ export default function AdminDashboard() {
             jurusanAwal: "",
             jurusanAkhir: "",
         });
+        setBulkDeleteData({ kelas: "", jurusan: "" });
+        setDeleteCountdown(5); // Reset timer ke 5
     };
 
     // ================= LOGIKA BUKA KUNCI AKUN =================
@@ -95,7 +116,7 @@ export default function AdminDashboard() {
         }
     };
 
-    // ================= LOGIKA HAPUS (DELETE) =================
+    // ================= LOGIKA HAPUS (DELETE SATUAN) =================
     const confirmDelete = async () => {
         if (!selectedStudent) return;
         try {
@@ -171,6 +192,46 @@ export default function AdminDashboard() {
                 error.response?.data?.message ||
                     "Gagal memperbarui data siswa secara massal.",
             );
+        }
+    };
+
+    // ================= LOGIKA HAPUS MASSAL (BULK DELETE) =================
+    const handleBulkDeleteChange = (e) => {
+        setBulkDeleteData({
+            ...bulkDeleteData,
+            [e.target.name]: e.target.value,
+        });
+    };
+
+    const triggerBulkDeleteConfirm = (e) => {
+        e.preventDefault();
+        if (!bulkDeleteData.kelas || !bulkDeleteData.jurusan) {
+            alert("Mohon pilih kelas dan jurusan!");
+            return;
+        }
+        setShowBulkDeleteModal(false);
+        setDeleteCountdown(5); // Set ulang timer 5 detik
+        setShowBulkDeleteConfirmModal(true); // Munculkan pop-up konfirmasi
+    };
+
+    const executeBulkDelete = async () => {
+        if (deleteCountdown > 0) return; // Kunci fungsi jika timer belum habis
+        try {
+            const response = await axios.delete(
+                `${import.meta.env.VITE_API_BASE_URL}/students/bulk-delete`,
+                {
+                    data: bulkDeleteData, // Untuk metode DELETE, body request dikirim via 'data'
+                }
+            );
+            fetchStudents();
+            handleDoubleClickCancel();
+            alert(response.data.message);
+        } catch (error) {
+            alert(
+                error.response?.data?.message ||
+                    "Gagal menghapus data massal.",
+            );
+            handleDoubleClickCancel();
         }
     };
 
@@ -348,14 +409,23 @@ export default function AdminDashboard() {
                         </table>
                     </div>
 
-                    {/* Tombol EDIT SELURUH SISWA (Muncul hanya saat mode Edit) */}
+                    {/* Tombol AKSI MASSAL (Muncul saat mode Edit / Delete) */}
                     <div
-                        className={`absolute bottom-6 right-8 transition-all duration-500 ${actionMode === "edit" ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-10 pointer-events-none"}`}>
-                        <button
-                            onClick={() => setShowBulkEditModal(true)}
-                            className="bg-[#2D60FF] hover:bg-blue-600 text-white font-bold tracking-widest uppercase py-3.5 px-8 rounded-full shadow-[0_10px_20px_rgba(45,96,255,0.4)] transition-transform hover:scale-105 text-xs outline-none">
-                            Edit Seluruh Siswa
-                        </button>
+                        className={`absolute bottom-6 right-8 transition-all duration-500 ${actionMode === "edit" || actionMode === "delete" ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-10 pointer-events-none"}`}>
+                        {actionMode === "edit" && (
+                            <button
+                                onClick={() => setShowBulkEditModal(true)}
+                                className="bg-[#2D60FF] hover:bg-blue-600 text-white font-bold tracking-widest uppercase py-3.5 px-8 rounded-full shadow-[0_10px_20px_rgba(45,96,255,0.4)] transition-transform hover:scale-105 text-xs outline-none">
+                                Edit Seluruh Siswa
+                            </button>
+                        )}
+                        {actionMode === "delete" && (
+                            <button
+                                onClick={() => setShowBulkDeleteModal(true)}
+                                className="bg-[#FF0000] hover:bg-red-700 text-white font-bold tracking-widest uppercase py-3.5 px-8 rounded-full shadow-[0_10px_20px_rgba(255,0,0,0.4)] transition-transform hover:scale-105 text-xs outline-none">
+                                Hapus Seluruh Siswa
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -453,7 +523,7 @@ export default function AdminDashboard() {
                 </div>
             </main>
 
-            {/* ================= MODAL BULK EDIT (FOTO 5) ================= */}
+            {/* ================= MODAL BULK EDIT ================= */}
             {showBulkEditModal && (
                 <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity animate-fade-in-up"
@@ -464,7 +534,6 @@ export default function AdminDashboard() {
                         <form
                             onSubmit={confirmBulkEdit}
                             className="flex flex-col gap-6">
-                            {/* AWAL KELAS */}
                             <div className="flex flex-col">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Awal Kelas
@@ -486,8 +555,6 @@ export default function AdminDashboard() {
                                     <option value="XII">XII (DUA BELAS)</option>
                                 </select>
                             </div>
-
-                            {/* NAIK KELAS */}
                             <div className="flex flex-col">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Naik Kelas
@@ -512,8 +579,6 @@ export default function AdminDashboard() {
                                     </option>
                                 </select>
                             </div>
-
-                            {/* JURUSAN AWAL */}
                             <div className="flex flex-col">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Jurusan Awal
@@ -538,8 +603,6 @@ export default function AdminDashboard() {
                                     </option>
                                 </select>
                             </div>
-
-                            {/* JURUSAN AKHIR */}
                             <div className="flex flex-col">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Jurusan Akhir
@@ -564,13 +627,114 @@ export default function AdminDashboard() {
                                     </option>
                                 </select>
                             </div>
-
                             <button
                                 type="submit"
                                 className="mt-4 bg-[#2D60FF] hover:bg-blue-600 text-white font-bold py-4 px-10 rounded-full shadow-[0_10px_20px_rgba(45,96,255,0.4)] transition-transform hover:scale-105 uppercase tracking-widest text-sm mx-auto w-3/4 outline-none">
                                 KONFIRMASI
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= MODAL BULK DELETE (HAPUS MASSAL FORM) ================= */}
+            {showBulkDeleteModal && (
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity animate-fade-in-up"
+                    onDoubleClick={handleDoubleClickCancel}>
+                    <div
+                        className="bg-[#283247]/90 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-10 max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col relative"
+                        onDoubleClick={(e) => e.stopPropagation()}>
+                        <form
+                            onSubmit={triggerBulkDeleteConfirm}
+                            className="flex flex-col gap-6">
+                            {/* KELAS */}
+                            <div className="flex flex-col">
+                                <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
+                                    Kelas
+                                </label>
+                                <select
+                                    name="kelas"
+                                    value={bulkDeleteData.kelas}
+                                    onChange={handleBulkDeleteChange}
+                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#2D60FF] shadow-inner font-medium text-xs tracking-widest"
+                                    required>
+                                    <option
+                                        value=""
+                                        disabled
+                                        className="text-gray-500">
+                                        PILIH KELAS YANG INGIN DI HAPUS
+                                    </option>
+                                    <option value="X">X (SEPULUH)</option>
+                                    <option value="XI">XI (SEBELAS)</option>
+                                    <option value="XII">XII (DUA BELAS)</option>
+                                </select>
+                            </div>
+                            {/* JURUSAN */}
+                            <div className="flex flex-col">
+                                <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
+                                    Jurusan
+                                </label>
+                                <select
+                                    name="jurusan"
+                                    value={bulkDeleteData.jurusan}
+                                    onChange={handleBulkDeleteChange}
+                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#2D60FF] shadow-inner font-medium text-xs tracking-widest"
+                                    required>
+                                    <option
+                                        value=""
+                                        disabled
+                                        className="text-gray-500">
+                                        PILIH JURUSAN YANG INGIN DI HAPUS
+                                    </option>
+                                    <option value="FI">
+                                        FARMASI INDUSTRI (FI)
+                                    </option>
+                                    <option value="TKI">
+                                        TEKNIK KIMIA INDUSTRI (TKI)
+                                    </option>
+                                </select>
+                            </div>
+                            <button
+                                type="submit"
+                                className="mt-4 bg-[#2D60FF] hover:bg-blue-600 text-white font-bold py-4 px-10 rounded-full shadow-[0_10px_20px_rgba(45,96,255,0.4)] transition-transform hover:scale-105 uppercase tracking-widest text-sm mx-auto w-3/4 outline-none">
+                                KONFIRMASI
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= MODAL BULK DELETE KONFIRMASI (TIMER 5 DETIK) ================= */}
+            {showBulkDeleteConfirmModal && (
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center transition-opacity animate-fade-in-up"
+                    onDoubleClick={handleDoubleClickCancel}>
+                    <div
+                        className="bg-[#4E5364] rounded-[2rem] p-10 max-w-md w-full shadow-2xl flex flex-col items-center text-center border border-white/10"
+                        onDoubleClick={(e) => e.stopPropagation()}>
+                        <p className="text-white font-bold tracking-widest text-[11px] mb-10 uppercase leading-loose">
+                            Data akun siswa ini akan <br />
+                            dihapus secara permanen. <br />
+                            Pastikan anda yakin <br />
+                            sebelum melanjutkan <br />
+                            proses ini.
+                        </p>
+                        <div className="flex gap-6 w-full justify-center">
+                            <button
+                                onClick={handleDoubleClickCancel}
+                                className="bg-[#2D60FF] hover:bg-blue-600 text-white font-bold tracking-widest uppercase py-3 px-8 rounded-full shadow-[0_5px_15px_rgba(45,96,255,0.4)] transition-transform hover:scale-105 outline-none text-xs w-32">
+                                Tidak
+                            </button>
+                            <button
+                                onClick={executeBulkDelete}
+                                disabled={deleteCountdown > 0}
+                                className={`font-bold tracking-widest uppercase py-3 px-8 rounded-full transition-all outline-none text-xs w-32 shadow-[0_5px_15px_rgba(255,0,0,0.4)] ${deleteCountdown > 0 ? "bg-red-600/50 cursor-not-allowed text-white/70" : "bg-[#FF0000] hover:bg-red-700 hover:scale-105 text-white"}`}>
+                                {deleteCountdown > 0
+                                    ? `( ${deleteCountdown} ) IYA`
+                                    : "IYA"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -602,7 +766,7 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* ================= MODAL HAPUS ================= */}
+            {/* ================= MODAL HAPUS SATUAN ================= */}
             {showDeleteModal && (
                 <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity"

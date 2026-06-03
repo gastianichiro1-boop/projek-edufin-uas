@@ -8,6 +8,12 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\BillController;
 use Illuminate\Support\Facades\Artisan;
 
+// Fitur Edit Akun Siswa Secara Massal
+Route::put('/students/bulk-update', [StudentController::class, 'bulkUpdate']);
+
+// Fitur Hapus Akun Siswa Secara Massal
+Route::delete('/students/bulk-delete', [StudentController::class, 'bulkDelete']);
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
