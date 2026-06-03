@@ -41,4 +41,7 @@ Route::put('/bills/{id}/pay', [BillController::class, 'payBill']);
 Route::put('/students/{id}/lock', [StudentController::class, 'lockAccount']);
 Route::put('/students/{id}/unlock', [StudentController::class, 'unlockAccount']);
 
+//7. Fitur Edit Akun Siswa Secara Massal
+Route::put('/students/bulk-update', [StudentController::class, 'bulkUpdate']);
+
 

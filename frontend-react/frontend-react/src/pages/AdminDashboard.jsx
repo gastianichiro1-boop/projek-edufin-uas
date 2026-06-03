@@ -6,10 +6,6 @@ export default function AdminDashboard() {
     const [students, setStudents] = useState([]);
     const [activeJurusan, setActiveJurusan] = useState("FI");
     const [activeKelas, setActiveKelas] = useState("X");
-
-    // ==========================================
-    // STATE BARU: Untuk menyimpan teks pencarian
-    // ==========================================
     const [searchTerm, setSearchTerm] = useState("");
 
     // State untuk Interaksi UI Baru
@@ -21,9 +17,20 @@ export default function AdminDashboard() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
 
-    // STATE UNTUK POP-UP BUKA KUNCI
+    // State untuk Pop-up Buka Kunci
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [studentToUnlock, setStudentToUnlock] = useState(null);
+
+    // ==========================================
+    // STATE BARU: FITUR EDIT SELURUH SISWA (BULK UPDATE)
+    // ==========================================
+    const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+    const [bulkEditData, setBulkEditData] = useState({
+        kelasAwal: "",
+        kelasAkhir: "",
+        jurusanAwal: "",
+        jurusanAkhir: "",
+    });
 
     // Menarik data dari Laravel
     const fetchStudents = async () => {
@@ -41,47 +48,48 @@ export default function AdminDashboard() {
         fetchStudents();
     }, []);
 
-    // ==========================================
-    // PERBAIKAN LOGIKA FILTER: Memasukkan Search Term
-    // ==========================================
+    // Filter Data (Pencarian, Kelas, Jurusan)
     const filteredStudents = students.filter((student) => {
-        // 1. Cek kecocokan Jurusan & Kelas
         const matchJurusan =
             student.jurusan?.toUpperCase() === activeJurusan.toUpperCase();
         const matchKelas =
             student.kelas?.toUpperCase() === activeKelas.toUpperCase();
-
-        // 2. Cek kecocokan Kata Kunci (Nama atau NISN)
         const keyword = searchTerm.toLowerCase();
         const matchSearch =
             (student.nama_lengkap &&
                 student.nama_lengkap.toLowerCase().includes(keyword)) ||
             (student.nisn && student.nisn.toLowerCase().includes(keyword));
 
-        // Tampilkan siswa JIKA cocok semua kriteria
         return matchJurusan && matchKelas && matchSearch;
     });
 
-    // ================= LOGIKA KLIK GANDA (DOUBLE CLICK) =================
+    // ================= LOGIKA KLIK GANDA (Batal) =================
     const handleDoubleClickCancel = () => {
         setIsActionOpen(false);
         setActionMode("none");
         setShowDeleteModal(false);
         setShowEditModal(false);
         setShowUnlockModal(false);
+        setShowBulkEditModal(false);
         setSelectedStudent(null);
         setStudentToUnlock(null);
+        setBulkEditData({
+            kelasAwal: "",
+            kelasAkhir: "",
+            jurusanAwal: "",
+            jurusanAkhir: "",
+        });
     };
 
-    // ================= LOGIKA BUKA KUNCI AKUN (UNLOCK) =================
+    // ================= LOGIKA BUKA KUNCI AKUN =================
     const confirmUnlock = async () => {
         if (!studentToUnlock) return;
         try {
             await axios.put(
                 `${import.meta.env.VITE_API_BASE_URL}/students/${studentToUnlock.id}/unlock`,
             );
-            fetchStudents(); // Refresh data
-            handleDoubleClickCancel(); // Tutup modal
+            fetchStudents();
+            handleDoubleClickCancel();
         } catch (error) {
             alert("Gagal membuka kunci akun!");
         }
@@ -101,7 +109,7 @@ export default function AdminDashboard() {
         }
     };
 
-    // ================= LOGIKA UBAH (EDIT) =================
+    // ================= LOGIKA UBAH SATUAN (EDIT) =================
     const handleEditChange = (e) => {
         setSelectedStudent({
             ...selectedStudent,
@@ -118,12 +126,50 @@ export default function AdminDashboard() {
             );
             fetchStudents();
             handleDoubleClickCancel();
-            alert(
-                "Data berhasil diperbarui! Siswa sekarang bisa login pakai NISN baru.",
+            alert("Data berhasil diperbarui!");
+        } catch (error) {
+            alert("Gagal mengubah data! Pastikan NISN tidak bentrok.");
+        }
+    };
+
+    // ================= LOGIKA UBAH MASSAL (BULK EDIT) =================
+    const handleBulkEditChange = (e) => {
+        setBulkEditData({
+            ...bulkEditData,
+            [e.target.name]: e.target.value,
+        });
+    };
+
+    const confirmBulkEdit = async (e) => {
+        e.preventDefault();
+        // Validasi form agar tidak ada yang kosong
+        if (
+            !bulkEditData.kelasAwal ||
+            !bulkEditData.kelasAkhir ||
+            !bulkEditData.jurusanAwal ||
+            !bulkEditData.jurusanAkhir
+        ) {
+            alert("Mohon lengkapi semua pilihan!");
+            return;
+        }
+
+        try {
+            const response = await axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/students/bulk-update`,
+                {
+                    kelas_awal: bulkEditData.kelasAwal,
+                    kelas_akhir: bulkEditData.kelasAkhir,
+                    jurusan_awal: bulkEditData.jurusanAwal,
+                    jurusan_akhir: bulkEditData.jurusanAkhir,
+                },
             );
+            fetchStudents();
+            handleDoubleClickCancel();
+            alert(response.data.message);
         } catch (error) {
             alert(
-                "Gagal mengubah data! Pastikan NISN tidak bentrok dengan siswa lain.",
+                error.response?.data?.message ||
+                    "Gagal memperbarui data siswa secara massal.",
             );
         }
     };
@@ -141,8 +187,8 @@ export default function AdminDashboard() {
                         <input
                             type="text"
                             placeholder="Cari Berdasarkan Nama / NISN"
-                            value={searchTerm} // KABEL SENSOR 1
-                            onChange={(e) => setSearchTerm(e.target.value)} // KABEL SENSOR 2
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full bg-[#4E5364] text-white placeholder-gray-300 rounded-full py-3 px-6 pr-12 outline-none border-none focus:ring-2 focus:ring-blue-400"
                         />
                         <svg
@@ -174,7 +220,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Tabel Konten */}
-                <div className="bg-[#282C3E] rounded-3xl flex-1 border border-white/5 shadow-2xl overflow-hidden flex flex-col">
+                <div className="bg-[#282C3E] rounded-3xl flex-1 border border-white/5 shadow-2xl overflow-hidden flex flex-col relative">
                     <div className="px-8 py-6 flex-1">
                         <table className="w-full text-left text-white">
                             <thead>
@@ -191,8 +237,7 @@ export default function AdminDashboard() {
                                     <th className="py-4 text-xl font-bold">
                                         Kelas
                                     </th>
-                                    <th className="py-4 w-12 text-center"></th>{" "}
-                                    {/* Header kosong untuk ikon peringatan */}
+                                    <th className="py-4 w-12 text-center"></th>
                                     <th className="py-4 text-right">
                                         <div className="bg-[#1C2031] inline-block px-3 py-2 rounded-lg text-xs font-bold text-center leading-tight">
                                             Total siswa
@@ -222,7 +267,6 @@ export default function AdminDashboard() {
                                                 {student.kelas}
                                             </td>
 
-                                            {/* IKON PERINGATAN KUNING JIKA AKUN TERKUNCI */}
                                             <td className="py-6 text-center">
                                                 {student.is_locked && (
                                                     <button
@@ -302,6 +346,16 @@ export default function AdminDashboard() {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Tombol EDIT SELURUH SISWA (Muncul hanya saat mode Edit) */}
+                    <div
+                        className={`absolute bottom-6 right-8 transition-all duration-500 ${actionMode === "edit" ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-10 pointer-events-none"}`}>
+                        <button
+                            onClick={() => setShowBulkEditModal(true)}
+                            className="bg-[#2D60FF] hover:bg-blue-600 text-white font-bold tracking-widest uppercase py-3.5 px-8 rounded-full shadow-[0_10px_20px_rgba(45,96,255,0.4)] transition-transform hover:scale-105 text-xs outline-none">
+                            Edit Seluruh Siswa
+                        </button>
                     </div>
                 </div>
 
@@ -399,6 +453,128 @@ export default function AdminDashboard() {
                 </div>
             </main>
 
+            {/* ================= MODAL BULK EDIT (FOTO 5) ================= */}
+            {showBulkEditModal && (
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity animate-fade-in-up"
+                    onDoubleClick={handleDoubleClickCancel}>
+                    <div
+                        className="bg-[#283247]/90 backdrop-blur-2xl border border-[#4285F4]/40 rounded-[2.5rem] p-10 max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col relative"
+                        onDoubleClick={(e) => e.stopPropagation()}>
+                        <form
+                            onSubmit={confirmBulkEdit}
+                            className="flex flex-col gap-6">
+                            {/* AWAL KELAS */}
+                            <div className="flex flex-col">
+                                <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
+                                    Awal Kelas
+                                </label>
+                                <select
+                                    name="kelasAwal"
+                                    value={bulkEditData.kelasAwal}
+                                    onChange={handleBulkEditChange}
+                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
+                                    required>
+                                    <option
+                                        value=""
+                                        disabled
+                                        className="text-gray-500">
+                                        KELAS YANG INGIN DI UBAH
+                                    </option>
+                                    <option value="X">X (SEPULUH)</option>
+                                    <option value="XI">XI (SEBELAS)</option>
+                                    <option value="XII">XII (DUA BELAS)</option>
+                                </select>
+                            </div>
+
+                            {/* NAIK KELAS */}
+                            <div className="flex flex-col">
+                                <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
+                                    Naik Kelas
+                                </label>
+                                <select
+                                    name="kelasAkhir"
+                                    value={bulkEditData.kelasAkhir}
+                                    onChange={handleBulkEditChange}
+                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
+                                    required>
+                                    <option
+                                        value=""
+                                        disabled
+                                        className="text-gray-500">
+                                        NAIK KELAS BERAPA
+                                    </option>
+                                    <option value="X">X (SEPULUH)</option>
+                                    <option value="XI">XI (SEBELAS)</option>
+                                    <option value="XII">XII (DUA BELAS)</option>
+                                    <option value="ALUMNI">
+                                        LULUS / ALUMNI
+                                    </option>
+                                </select>
+                            </div>
+
+                            {/* JURUSAN AWAL */}
+                            <div className="flex flex-col">
+                                <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
+                                    Jurusan Awal
+                                </label>
+                                <select
+                                    name="jurusanAwal"
+                                    value={bulkEditData.jurusanAwal}
+                                    onChange={handleBulkEditChange}
+                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
+                                    required>
+                                    <option
+                                        value=""
+                                        disabled
+                                        className="text-gray-500">
+                                        JURUSAN YANG INGIN DI UBAH
+                                    </option>
+                                    <option value="FI">
+                                        FARMASI INDUSTRI (FI)
+                                    </option>
+                                    <option value="TKI">
+                                        TEKNIK KIMIA INDUSTRI (TKI)
+                                    </option>
+                                </select>
+                            </div>
+
+                            {/* JURUSAN AKHIR */}
+                            <div className="flex flex-col">
+                                <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
+                                    Jurusan Akhir
+                                </label>
+                                <select
+                                    name="jurusanAkhir"
+                                    value={bulkEditData.jurusanAkhir}
+                                    onChange={handleBulkEditChange}
+                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
+                                    required>
+                                    <option
+                                        value=""
+                                        disabled
+                                        className="text-gray-500">
+                                        FINAL JURUSAN YANG DITETAPKAN
+                                    </option>
+                                    <option value="FI">
+                                        FARMASI INDUSTRI (FI)
+                                    </option>
+                                    <option value="TKI">
+                                        TEKNIK KIMIA INDUSTRI (TKI)
+                                    </option>
+                                </select>
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="mt-4 bg-[#2D60FF] hover:bg-blue-600 text-white font-bold py-4 px-10 rounded-full shadow-[0_10px_20px_rgba(45,96,255,0.4)] transition-transform hover:scale-105 uppercase tracking-widest text-sm mx-auto w-3/4 outline-none">
+                                KONFIRMASI
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* ================= MODAL BUKA KUNCI (UNLOCK) ================= */}
             {showUnlockModal && studentToUnlock && (
                 <div
@@ -450,7 +626,7 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* ================= MODAL UBAH / EDIT ================= */}
+            {/* ================= MODAL UBAH SATUAN (EDIT) ================= */}
             {showEditModal && selectedStudent && (
                 <div
                     className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity"

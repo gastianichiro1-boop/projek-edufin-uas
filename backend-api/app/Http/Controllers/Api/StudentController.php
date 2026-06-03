@@ -190,4 +190,31 @@ class StudentController extends Controller
         }
         return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
     }
+
+    // ====================================================================
+    // FITUR BARU: EDIT MASSAL (KENAIKAN KELAS / PINDAH JURUSAN)
+    // ====================================================================
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'kelas_awal' => 'required',
+            'kelas_akhir' => 'required',
+            'jurusan_awal' => 'required',
+            'jurusan_akhir' => 'required',
+        ]);
+
+        // Mencari siswa yang cocok dengan kriteria awal, lalu menimpanya dengan data baru
+        $updatedCount = Student::where('kelas', $request->kelas_awal)
+                               ->where('jurusan', $request->jurusan_awal)
+                               ->update([
+                                   'kelas' => $request->kelas_akhir,
+                                   'jurusan' => $request->jurusan_akhir
+                               ]);
+
+        if ($updatedCount > 0) {
+            return response()->json(['message' => "$updatedCount data siswa berhasil diperbarui!"], 200);
+        } else {
+            return response()->json(['message' => 'Tidak ada data siswa yang cocok untuk diubah.'], 404);
+        }
+    }
 }
