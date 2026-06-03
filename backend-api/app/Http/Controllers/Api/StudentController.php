@@ -117,15 +117,26 @@ class StudentController extends Controller
             return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
         }
 
-        // PERBAIKAN: Mencegah Error 500 jika PIN di database kosong (NULL)
-        $dbPin = $student->pin ? (string) $student->pin : '';
+        // =====================================================================
+        // PERBAIKAN MEKANIK: Fitur "Self-Healing" (Penyembuhan Database)
+        // Mengobati akun-akun lama yang PIN-nya terlanjur kosong/NULL.
+        // =====================================================================
+        if (empty($student->pin)) {
+            $student->pin = '123456';
+            $student->save(); // Simpan permanen ke database agar sembuh total
+        }
 
+        $dbPin = (string) $student->pin;
+
+        // Pencocokan PIN
         if ($request->pin === $dbPin || Hash::check($request->pin, $dbPin)) {
             return response()->json(['status' => 'success', 'message' => 'PIN Benar'], 200);
         } else {
-            return response()->json(['status' => 'error', 'message' => 'PIN Salah'], 401); // 401 ini yang akan ditangkap React untuk hitung mundur!
+            // Melempar Error 401 agar UI React bisa memunculkan sisa hitung mundur!
+            return response()->json(['status' => 'error', 'message' => 'PIN Salah'], 401);
         }
     }
+
     // ====================================================================
     // FITUR KEAMANAN GEMBOK AKUN (TETAP DIPERTAHANKAN)
     // ====================================================================
