@@ -22,7 +22,8 @@ class Student extends Model
         'jurusan',
         'nama_lengkap',
         'saldo',
-        'pin', // <--- INI WAJIB ADA agar angka 123456 tidak diblokir dan tidak menjadi NULL
+        'pin',
+        'is_locked' // <--- INI WAJIB ADA agar angka 123456 tidak diblokir dan tidak menjadi NULL
     ];
 
     protected $hidden = [

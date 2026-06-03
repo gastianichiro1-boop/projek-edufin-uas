@@ -37,4 +37,8 @@ Route::get('/bills/student/{student_id}', [BillController::class, 'getStudentBil
 Route::post('/bills', [BillController::class, 'store']);
 Route::put('/bills/{id}/pay', [BillController::class, 'payBill']);
 
+//6. Lock Akun Bila Pin 3 X Salah
+Route::put('/students/{id}/lock', [StudentController::class, 'lockAccount']);
+Route::put('/students/{id}/unlock', [StudentController::class, 'unlockAccount']);
+
 

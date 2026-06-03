@@ -78,7 +78,7 @@ class StudentController extends Controller
 
         if ($nominalInput > 0) {
             $request->validate([
-                'nominal' => 'required|numeric|min:10000|max:1000000'
+                'nominal' => 'required|numeric|min:10000|max:2000000'
             ]);
             $responseMessage = 'Top Up Berhasil';
         } else {
@@ -122,5 +122,33 @@ class StudentController extends Controller
         } else {
             return response()->json(['status' => 'error', 'message' => 'PIN Salah'], 401);
         }
+    }
+
+    // ====================================================================
+    // FITUR KEAMANAN GEMBOK AKUN (TETAP DIPERTAHANKAN)
+    // ====================================================================
+
+    // Mengunci Akun (Dipanggil React saat salah PIN 3x)
+    public function lockAccount($id)
+    {
+        $student = Student::find($id);
+        if ($student) {
+            $student->is_locked = true;
+            $student->save();
+            return response()->json(['message' => 'Akun berhasil dikunci demi keamanan'], 200);
+        }
+        return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
+    }
+
+    // Membuka Kunci Akun (Dipanggil oleh Admin)
+    public function unlockAccount($id)
+    {
+        $student = Student::find($id);
+        if ($student) {
+            $student->is_locked = false;
+            $student->save();
+            return response()->json(['message' => 'Akun berhasil dibuka dan diaktifkan kembali'], 200);
+        }
+        return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
     }
 }

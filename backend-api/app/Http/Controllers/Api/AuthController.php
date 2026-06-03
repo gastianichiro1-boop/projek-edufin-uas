@@ -30,6 +30,18 @@ class AuthController extends Controller
 
         // Jika siswa ketemu DAN passwordnya cocok dengan yang diacak (Hash)
         if ($student && Hash::check($request->password, $student->password)) {
+
+            // ==========================================
+            // FITUR KEAMANAN: CEK GEMBOK AKUN
+            // ==========================================
+            if ($student->is_locked) {
+                return response()->json([
+                    'message' => 'Akun Terkunci',
+                    'is_locked' => true // Penanda khusus untuk React
+                ], 403); // Status 403: Forbidden (Dilarang Masuk)
+            }
+            // ==========================================
+
             return response()->json([
                 'role' => 'student',
                 'data' => $student,
