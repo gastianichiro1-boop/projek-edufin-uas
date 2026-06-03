@@ -54,28 +54,54 @@ export default function StudentDompet() {
     // EFEK TIMER 8 DETIK UNTUK TOOLTIP (FOTO 2)
     // ==========================================
     useEffect(() => {
-        // Jika data siswa sudah ada, dan saldo >= 5.000.000, munculkan tooltip 8 detik
-        if (studentData && parseInt(studentData.saldo || 0) >= 5000000) {
-            setShowLimitTooltip(true);
-            const timer = setTimeout(() => {
+        // Cek total pengisian saldo bulan ini dari history
+        if (studentData && history.length > 0) {
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+
+            const totalTopupBulanIni = history
+                .filter((tx) => {
+                    const txDate = new Date(tx.created_at);
+                    return (
+                        tx.title === "ISI SALDO" &&
+                        txDate.getMonth() === currentMonth &&
+                        txDate.getFullYear() === currentYear
+                    );
+                })
+                .reduce((sum, tx) => sum + parseInt(tx.amount || 0), 0);
+
+            // Jika total top up >= 5.000.000, munculkan tooltip 8 detik
+            if (totalTopupBulanIni >= 5000000) {
+                setShowLimitTooltip(true);
+                const timer = setTimeout(() => {
+                    setShowLimitTooltip(false);
+                }, 8000); // Hilang setelah 8 detik
+
+                // Bersihkan timer jika komponen ditutup
+                return () => clearTimeout(timer);
+            } else {
                 setShowLimitTooltip(false);
-            }, 8000); // Hilang setelah 8 detik
-
-            // Bersihkan timer jika komponen ditutup
-            return () => clearTimeout(timer);
-        } else {
-            setShowLimitTooltip(false);
+            }
         }
-    }, [studentData]);
+    }, [studentData, history]);
 
+    // ==========================================
+    // PERBAIKAN LOGIKA: CEK LIMIT DULU, LALU CATAT HISTORI
+    // ==========================================
     const handleTopup = async () => {
         if (parseInt(nominal) < 10000 || parseInt(nominal) > 5000000) {
-            alert("Minimal Rp 10.000");
+            alert("Maksimal Rp 5.000.000");
             return;
         }
         setLoading(true);
         try {
-            // 1. Simpan Transaksi Pemasukan ke Database
+            // 1. UPDATE SALDO & CEK LIMIT DULU KE LARAVEL
+            const updateSaldo = await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/students/topup/${studentData.id}`,
+                { nominal },
+            );
+
+            // 2. JIKA LARAVEL MENGIZINKAN (TIDAK KENA LIMIT), BARU CATAT HISTORI TRANSAKSI
             await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/transactions`,
                 {
@@ -84,12 +110,6 @@ export default function StudentDompet() {
                     subtitle: selectedProvider,
                     amount: nominal,
                 },
-            );
-
-            // 2. Update Saldo di tabel Students
-            const updateSaldo = await axios.post(
-                `${import.meta.env.VITE_API_BASE_URL}/students/topup/${studentData.id}`,
-                { nominal },
             );
 
             // 3. Perbarui LocalStorage

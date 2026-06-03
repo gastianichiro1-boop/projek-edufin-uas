@@ -66,7 +66,8 @@ class StudentController extends Controller
         }
         return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
     }
-public function topUp(Request $request, $id)
+
+ public function topUp(Request $request, $id)
     {
         $student = Student::find($id);
         if (!$student) {
@@ -76,19 +77,29 @@ public function topUp(Request $request, $id)
         $nominalInput = (int) $request->nominal;
 
         if ($nominalInput > 0) {
-            // Validasi Input Nominal (Minimal 10.000)
             $request->validate([
                 'nominal' => 'required|numeric|min:10000'
             ]);
 
             // ====================================================================
-            // FITUR BARU: LIMIT SALDO MAKSIMAL 5 JUTA
+            // PERBAIKAN LOGIKA: CEK TOTAL TOP UP BULAN INI (BUKAN SALDO SAAT INI)
             // ====================================================================
-            if (($student->saldo + $nominalInput) > 5000000) {
+            $currentMonth = date('m');
+            $currentYear = date('Y');
+
+            // Menjumlahkan semua histori transaksi "ISI SALDO" milik siswa di bulan dan tahun ini
+            $totalTopupBulanIni = \App\Models\Transaction::where('student_id', $id)
+                ->where('title', 'ISI SALDO')
+                ->whereMonth('created_at', $currentMonth)
+                ->whereYear('created_at', $currentYear)
+                ->sum('amount');
+
+            // Jika total top up bulan ini + yang mau diisi melebihi 5 juta, tolak!
+            if (($totalTopupBulanIni + $nominalInput) > 5000000) {
                 return response()->json([
                     'status' => 'error_limit',
                     'message' => 'Batas maksimum pengisian saldo Anda bulan ini (Rp5.000.000) telah terpenuhi.'
-                ], 403); // Status 403 Forbidden
+                ], 403);
             }
 
             $responseMessage = 'Top Up Berhasil';
