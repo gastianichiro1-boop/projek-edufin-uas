@@ -117,13 +117,15 @@ class StudentController extends Controller
             return response()->json(['message' => 'Siswa tidak ditemukan'], 404);
         }
 
-        if ($request->pin == $student->pin || Hash::check($request->pin, $student->pin)) {
+        // PERBAIKAN: Mencegah Error 500 jika PIN di database kosong (NULL)
+        $dbPin = $student->pin ? (string) $student->pin : '';
+
+        if ($request->pin === $dbPin || Hash::check($request->pin, $dbPin)) {
             return response()->json(['status' => 'success', 'message' => 'PIN Benar'], 200);
         } else {
-            return response()->json(['status' => 'error', 'message' => 'PIN Salah'], 401);
+            return response()->json(['status' => 'error', 'message' => 'PIN Salah'], 401); // 401 ini yang akan ditangkap React untuk hitung mundur!
         }
     }
-
     // ====================================================================
     // FITUR KEAMANAN GEMBOK AKUN (TETAP DIPERTAHANKAN)
     // ====================================================================
