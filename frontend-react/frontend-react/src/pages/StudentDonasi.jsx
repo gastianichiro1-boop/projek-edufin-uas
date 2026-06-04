@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom"; // <-- PENTING: Untuk navigasi logout otomatis
 import SidebarSiswa from "../components/SidebarSiswa";
 
 export default function StudentDonasi() {
+    const navigate = useNavigate(); // Inisialisasi satpam pengusir
     const [studentData, setStudentData] = useState(null);
 
     // State Modal & Alur
-    const [step, setStep] = useState(0); // 0: Tutup, 1: Pilih Metode, 2: Input Saldo, 3: PIN, 4: Sukses
+    const [step, setStep] = useState(0); // 0: Tutup, 1: Pilih Metode, 2: Input Saldo, 3: PIN, 4: Sukses, 5: TERKUNCI
     const [amount, setAmount] = useState("");
     const [pin, setPin] = useState("");
     const [attempts, setAttempts] = useState(3);
@@ -18,14 +20,23 @@ export default function StudentDonasi() {
         if (data) setStudentData(data);
     }, []);
 
-    // Validasi: Hanya Angka
+    // Validasi: Hanya Angka & Format Ribuan
     const handleAmountChange = (e) => {
-        const val = e.target.value.replace(/[^0-9]/g, "");
-        setAmount(val);
+        // Ambil nilai murni
+        const rawValue = e.target.value.replace(/[^0-9]/g, "");
+        setAmount(rawValue);
     };
 
     const isBalanceEnough =
         studentData && parseInt(amount || 0) <= studentData.saldo;
+
+    // FUNGSI PENGUSIR KETIKA AKUN TERKUNCI
+    const handleKeluarTerkunci = () => {
+        localStorage.removeItem("student_data");
+        localStorage.removeItem("role");
+        setStep(0);
+        navigate("/login");
+    };
 
     // Logika Final Bayar Donasi dengan Verifikasi PIN Database
     const handleConfirmDonasi = async () => {
@@ -34,18 +45,24 @@ export default function StudentDonasi() {
 
         try {
             // 1. Verifikasi PIN ke Backend Laravel
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/students/verify-pin`, {
-                student_id: studentData.id,
-                pin: pin,
-            });
+            await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/students/verify-pin`,
+                {
+                    student_id: studentData.id,
+                    pin: pin,
+                },
+            );
 
             // 2. Jika sukses (PIN Benar), simpan Transaksi ke Database
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/transactions`, {
-                student_id: studentData.id,
-                title: "DONASI",
-                subtitle: "Bantuan Teman Sebaya",
-                amount: amount,
-            });
+            await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/transactions`,
+                {
+                    student_id: studentData.id,
+                    title: "DONASI",
+                    subtitle: "Bantuan Teman Sebaya",
+                    amount: amount,
+                },
+            );
 
             // 3. Update Saldo di Database
             const res = await axios.post(
@@ -72,12 +89,25 @@ export default function StudentDonasi() {
                 const sisa = attempts - 1;
                 setAttempts(sisa);
                 setPin("");
+
                 if (sisa > 0) {
                     setPinError(`PIN Salah! Sisa percobaan ${sisa}x`);
                 } else {
-                    alert("PIN Terblokir. Hubungi Admin.");
-                    setStep(0);
-                    setAttempts(3);
+                    // ==========================================
+                    // PERBAIKAN: EKSEKUSI PENGUNCIAN AKUN KE BACKEND
+                    // ==========================================
+                    try {
+                        // Tembak API Laravel untuk mengunci status akun di database secara permanen
+                        await axios.put(
+                            `${import.meta.env.VITE_API_BASE_URL}/students/${studentData.id}/lock`,
+                        );
+                    } catch (lockError) {
+                        console.error(
+                            "Gagal mengirim perintah kunci akun ke server:",
+                            lockError,
+                        );
+                    }
+                    setStep(5); // TAMPILKAN LAYAR MERAH TERKUNCI (STEP 5)
                 }
             } else {
                 // Logika jika error koneksi atau saldo tidak cukup dari server
@@ -133,7 +163,10 @@ export default function StudentDonasi() {
                                 Untuk Pembangunan Sekolah Kita
                             </h2>
                             <button
-                                onClick={() => setStep(1)}
+                                onClick={() => {
+                                    setStep(1);
+                                    setAmount(""); // Reset nilai saat mulai baru
+                                }}
                                 className="bg-[#051125] hover:bg-black text-white px-12 py-4 rounded-full font-bold tracking-widest transition-all transform hover:scale-105 shadow-xl border border-white/10 outline-none">
                                 Donasi
                             </button>
@@ -148,13 +181,15 @@ export default function StudentDonasi() {
             {step > 0 && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 transition-all">
                     {/* Wadah Glassmorphism Utama */}
-                    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative animate-fade-in-up flex flex-col items-center">
-                        {/* Tombol Close */}
-                        <button
-                            onClick={() => setStep(0)}
-                            className="absolute top-5 right-6 text-white/50 hover:text-white text-xl transition-colors outline-none z-50">
-                            ✕
-                        </button>
+                    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2.5rem] p-8 w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative animate-fade-in-up flex flex-col items-center text-center">
+                        {/* Tombol Close (Disembunyikan jika Step 5 / Terkunci) */}
+                        {step !== 5 && (
+                            <button
+                                onClick={() => setStep(0)}
+                                className="absolute top-5 right-6 text-white/50 hover:text-white text-xl transition-colors outline-none z-50">
+                                ✕
+                            </button>
+                        )}
 
                         {/* ================= STEP 1: QR & PILIH METODE ================= */}
                         {step === 1 && (
@@ -201,9 +236,16 @@ export default function StudentDonasi() {
                                         )}
                                     </p>
 
+                                    {/* Format Angka Real-Time (Ribuan) */}
                                     <input
                                         type="text"
-                                        value={amount}
+                                        value={
+                                            amount
+                                                ? new Intl.NumberFormat(
+                                                      "id-ID",
+                                                  ).format(amount)
+                                                : ""
+                                        }
                                         onChange={handleAmountChange}
                                         placeholder="0"
                                         className="w-full bg-transparent text-center text-4xl font-light text-white tracking-widest outline-none z-10 placeholder:text-white/20"
@@ -318,6 +360,34 @@ export default function StudentDonasi() {
                                     onClick={() => setStep(0)}
                                     className="w-full bg-white/20 hover:bg-white/30 border border-white/20 py-3 rounded-2xl font-bold tracking-widest transition-colors outline-none">
                                     SELESAI
+                                </button>
+                            </div>
+                        )}
+
+                        {/* ================= STEP 5: PERINGATAN AKUN TERKUNCI ================= */}
+                        {step === 5 && (
+                            <div className="flex flex-col items-center text-center gap-4 text-white mt-2 w-full">
+                                <svg
+                                    className="w-20 h-20 text-yellow-500 mb-2 drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={1.8}
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                    />
+                                </svg>
+                                <p className="text-white font-bold tracking-widest leading-relaxed text-xs mb-4 uppercase">
+                                    MAAF, AKUN ANDA TERKUNCI, SILAKAN MENUJU TU
+                                    SEKOLAH UNTUK MEMINTA MEMBUKA AKUN ANDA
+                                    KEMBALI
+                                </p>
+                                <button
+                                    onClick={handleKeluarTerkunci}
+                                    className="w-full bg-[#2D60FF] hover:bg-blue-600 border border-blue-400/50 py-4 rounded-2xl font-bold tracking-widest uppercase transition-all hover:scale-105 outline-none shadow-lg">
+                                    KELUAR
                                 </button>
                             </div>
                         )}
