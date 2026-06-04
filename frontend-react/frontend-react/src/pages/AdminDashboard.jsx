@@ -36,9 +36,18 @@ export default function AdminDashboard() {
     // STATE BARU: FITUR HAPUS MASSAL (BULK DELETE)
     // ==========================================
     const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-    const [showBulkDeleteConfirmModal, setShowBulkDeleteConfirmModal] = useState(false);
-    const [bulkDeleteData, setBulkDeleteData] = useState({ kelas: "", jurusan: "" });
+    const [showBulkDeleteConfirmModal, setShowBulkDeleteConfirmModal] =
+        useState(false);
+    const [bulkDeleteData, setBulkDeleteData] = useState({
+        kelas: "",
+        jurusan: "",
+    });
     const [deleteCountdown, setDeleteCountdown] = useState(5);
+
+    // ==========================================
+    // STATE BARU: PENGENDALI DROPDOWN KUSTOM MODERN
+    // ==========================================
+    const [openDropdown, setOpenDropdown] = useState(null);
 
     // Menarik data dari Laravel
     const fetchStudents = async () => {
@@ -60,7 +69,10 @@ export default function AdminDashboard() {
     useEffect(() => {
         let timer;
         if (showBulkDeleteConfirmModal && deleteCountdown > 0) {
-            timer = setTimeout(() => setDeleteCountdown(deleteCountdown - 1), 1000);
+            timer = setTimeout(
+                () => setDeleteCountdown(deleteCountdown - 1),
+                1000,
+            );
         }
         return () => clearTimeout(timer);
     }, [showBulkDeleteConfirmModal, deleteCountdown]);
@@ -100,6 +112,7 @@ export default function AdminDashboard() {
         });
         setBulkDeleteData({ kelas: "", jurusan: "" });
         setDeleteCountdown(5); // Reset timer ke 5
+        setOpenDropdown(null); // Tutup semua dropdown modern
     };
 
     // ================= LOGIKA BUKA KUNCI AKUN =================
@@ -163,7 +176,6 @@ export default function AdminDashboard() {
 
     const confirmBulkEdit = async (e) => {
         e.preventDefault();
-        // Validasi form agar tidak ada yang kosong
         if (
             !bulkEditData.kelasAwal ||
             !bulkEditData.kelasAkhir ||
@@ -210,30 +222,137 @@ export default function AdminDashboard() {
             return;
         }
         setShowBulkDeleteModal(false);
-        setDeleteCountdown(5); // Set ulang timer 5 detik
-        setShowBulkDeleteConfirmModal(true); // Munculkan pop-up konfirmasi
+        setDeleteCountdown(5);
+        setShowBulkDeleteConfirmModal(true);
     };
 
     const executeBulkDelete = async () => {
-        if (deleteCountdown > 0) return; // Kunci fungsi jika timer belum habis
+        if (deleteCountdown > 0) return;
         try {
             const response = await axios.delete(
                 `${import.meta.env.VITE_API_BASE_URL}/students/bulk-delete`,
                 {
-                    data: bulkDeleteData, // Untuk metode DELETE, body request dikirim via 'data'
-                }
+                    data: bulkDeleteData,
+                },
             );
             fetchStudents();
             handleDoubleClickCancel();
             alert(response.data.message);
         } catch (error) {
             alert(
-                error.response?.data?.message ||
-                    "Gagal menghapus data massal.",
+                error.response?.data?.message || "Gagal menghapus data massal.",
             );
             handleDoubleClickCancel();
         }
     };
+
+    // =========================================================================
+    // KOMPONEN: DROPDOWN MODERN (Menggantikan <select> bawaan OS yang jelek)
+    // =========================================================================
+    const renderCustomSelect = (
+        name,
+        value,
+        placeholder,
+        options,
+        stateHandler,
+    ) => {
+        const isOpen = openDropdown === name;
+        const selected = options.find((o) => o.value === value);
+
+        return (
+            <div className="relative w-full">
+                <div
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenDropdown(isOpen ? null : name);
+                    }}
+                    className={`bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 border ${
+                        isOpen
+                            ? "border-[#4285F4] shadow-[0_0_15px_rgba(66,133,244,0.3)]"
+                            : "border-transparent"
+                    } hover:border-[#4285F4]/50 cursor-pointer flex justify-between items-center shadow-inner font-medium text-xs tracking-widest transition-all`}>
+                    <span
+                        className={
+                            value ? "text-white font-bold" : "text-gray-500"
+                        }>
+                        {selected ? selected.label : placeholder}
+                    </span>
+                    <svg
+                        className={`w-5 h-5 transition-transform duration-300 ${
+                            isOpen
+                                ? "rotate-180 text-[#4285F4]"
+                                : "text-gray-500"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                        />
+                    </svg>
+                </div>
+
+                {isOpen && (
+                    <>
+                        {/* Backdrop untuk menutup dropdown saat klik di luar */}
+                        <div
+                            className="fixed inset-0 z-40"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                            }}></div>
+                        {/* List Pilihan Menu */}
+                        <div className="absolute top-[110%] left-0 right-0 bg-[#1A2138] border border-[#4285F4]/30 rounded-3xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] overflow-hidden z-50 animate-fade-in-up py-2">
+                            {options.map((opt) => (
+                                <div
+                                    key={opt.value}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        stateHandler({
+                                            target: { name, value: opt.value },
+                                        });
+                                        setOpenDropdown(null);
+                                    }}
+                                    className={`px-6 py-4 cursor-pointer text-xs tracking-widest transition-colors ${
+                                        value === opt.value
+                                            ? "bg-[#2D60FF]/20 text-[#4285F4] font-bold border-l-4 border-[#4285F4]"
+                                            : "text-gray-300 hover:bg-white/5 hover:text-white font-medium border-l-4 border-transparent"
+                                    }`}>
+                                    {opt.label}
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+        );
+    };
+
+    // Daftar Pilihan Dropdown
+    const kelasOptions = [
+        { value: "X", label: "X (SEPULUH)" },
+        { value: "XI", label: "XI (SEBELAS)" },
+        { value: "XII", label: "XII (DUA BELAS)" },
+    ];
+
+    const kelasEditOptions = [
+        { value: "X", label: "Kelas X" },
+        { value: "XI", label: "Kelas XI" },
+        { value: "XII", label: "Kelas XII" },
+    ];
+
+    const jurusanOptions = [
+        { value: "FI", label: "FARMASI INDUSTRI (FI)" },
+        { value: "TKI", label: "TEKNIK KIMIA INDUSTRI (TKI)" },
+    ];
+
+    const jurusanEditOptions = [
+        { value: "FI", label: "FI" },
+        { value: "TKI", label: "TKI" },
+    ];
 
     return (
         <div
@@ -327,7 +446,6 @@ export default function AdminDashboard() {
                                             <td className="py-6 font-bold text-lg">
                                                 {student.kelas}
                                             </td>
-
                                             <td className="py-6 text-center">
                                                 {student.is_locked && (
                                                     <button
@@ -353,7 +471,6 @@ export default function AdminDashboard() {
                                                     </button>
                                                 )}
                                             </td>
-
                                             <td className="py-6 text-right relative">
                                                 <div
                                                     className={`absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-3 transition-all duration-300 ${actionMode !== "none" ? "opacity-100 z-10" : "opacity-0 pointer-events-none -z-10"}`}>
@@ -523,7 +640,7 @@ export default function AdminDashboard() {
                 </div>
             </main>
 
-            {/* ================= MODAL BULK EDIT ================= */}
+            {/* ================= MODAL BULK EDIT (FOTO 5) ================= */}
             {showBulkEditModal && (
                 <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity animate-fade-in-up"
@@ -534,98 +651,53 @@ export default function AdminDashboard() {
                         <form
                             onSubmit={confirmBulkEdit}
                             className="flex flex-col gap-6">
-                            <div className="flex flex-col">
+                            <div className="flex flex-col relative z-[54]">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Awal Kelas
                                 </label>
-                                <select
-                                    name="kelasAwal"
-                                    value={bulkEditData.kelasAwal}
-                                    onChange={handleBulkEditChange}
-                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
-                                    required>
-                                    <option
-                                        value=""
-                                        disabled
-                                        className="text-gray-500">
-                                        KELAS YANG INGIN DI UBAH
-                                    </option>
-                                    <option value="X">X (SEPULUH)</option>
-                                    <option value="XI">XI (SEBELAS)</option>
-                                    <option value="XII">XII (DUA BELAS)</option>
-                                </select>
+                                {renderCustomSelect(
+                                    "kelasAwal",
+                                    bulkEditData.kelasAwal,
+                                    "KELAS YANG INGIN DI UBAH",
+                                    kelasOptions,
+                                    handleBulkEditChange,
+                                )}
                             </div>
-                            <div className="flex flex-col">
+                            <div className="flex flex-col relative z-[53]">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Naik Kelas
                                 </label>
-                                <select
-                                    name="kelasAkhir"
-                                    value={bulkEditData.kelasAkhir}
-                                    onChange={handleBulkEditChange}
-                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
-                                    required>
-                                    <option
-                                        value=""
-                                        disabled
-                                        className="text-gray-500">
-                                        NAIK KELAS BERAPA
-                                    </option>
-                                    <option value="X">X (SEPULUH)</option>
-                                    <option value="XI">XI (SEBELAS)</option>
-                                    <option value="XII">XII (DUA BELAS)</option>
-                                    <option value="ALUMNI">
-                                        LULUS / ALUMNI
-                                    </option>
-                                </select>
+                                {renderCustomSelect(
+                                    "kelasAkhir",
+                                    bulkEditData.kelasAkhir,
+                                    "NAIK KELAS BERAPA",
+                                    kelasOptions,
+                                    handleBulkEditChange,
+                                )}
                             </div>
-                            <div className="flex flex-col">
+                            <div className="flex flex-col relative z-[52]">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Jurusan Awal
                                 </label>
-                                <select
-                                    name="jurusanAwal"
-                                    value={bulkEditData.jurusanAwal}
-                                    onChange={handleBulkEditChange}
-                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
-                                    required>
-                                    <option
-                                        value=""
-                                        disabled
-                                        className="text-gray-500">
-                                        JURUSAN YANG INGIN DI UBAH
-                                    </option>
-                                    <option value="FI">
-                                        FARMASI INDUSTRI (FI)
-                                    </option>
-                                    <option value="TKI">
-                                        TEKNIK KIMIA INDUSTRI (TKI)
-                                    </option>
-                                </select>
+                                {renderCustomSelect(
+                                    "jurusanAwal",
+                                    bulkEditData.jurusanAwal,
+                                    "JURUSAN YANG INGIN DI UBAH",
+                                    jurusanOptions,
+                                    handleBulkEditChange,
+                                )}
                             </div>
-                            <div className="flex flex-col">
+                            <div className="flex flex-col relative z-[51]">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Jurusan Akhir
                                 </label>
-                                <select
-                                    name="jurusanAkhir"
-                                    value={bulkEditData.jurusanAkhir}
-                                    onChange={handleBulkEditChange}
-                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#4285F4] shadow-inner font-medium text-xs tracking-widest"
-                                    required>
-                                    <option
-                                        value=""
-                                        disabled
-                                        className="text-gray-500">
-                                        FINAL JURUSAN YANG DITETAPKAN
-                                    </option>
-                                    <option value="FI">
-                                        FARMASI INDUSTRI (FI)
-                                    </option>
-                                    <option value="TKI">
-                                        TEKNIK KIMIA INDUSTRI (TKI)
-                                    </option>
-                                </select>
+                                {renderCustomSelect(
+                                    "jurusanAkhir",
+                                    bulkEditData.jurusanAkhir,
+                                    "FINAL JURUSAN YANG DITETAPKAN",
+                                    jurusanOptions,
+                                    handleBulkEditChange,
+                                )}
                             </div>
                             <button
                                 type="submit"
@@ -648,52 +720,29 @@ export default function AdminDashboard() {
                         <form
                             onSubmit={triggerBulkDeleteConfirm}
                             className="flex flex-col gap-6">
-                            {/* KELAS */}
-                            <div className="flex flex-col">
+                            <div className="flex flex-col relative z-[54]">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Kelas
                                 </label>
-                                <select
-                                    name="kelas"
-                                    value={bulkDeleteData.kelas}
-                                    onChange={handleBulkDeleteChange}
-                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#2D60FF] shadow-inner font-medium text-xs tracking-widest"
-                                    required>
-                                    <option
-                                        value=""
-                                        disabled
-                                        className="text-gray-500">
-                                        PILIH KELAS YANG INGIN DI HAPUS
-                                    </option>
-                                    <option value="X">X (SEPULUH)</option>
-                                    <option value="XI">XI (SEBELAS)</option>
-                                    <option value="XII">XII (DUA BELAS)</option>
-                                </select>
+                                {renderCustomSelect(
+                                    "kelas",
+                                    bulkDeleteData.kelas,
+                                    "PILIH KELAS YANG INGIN DI HAPUS",
+                                    kelasOptions,
+                                    handleBulkDeleteChange,
+                                )}
                             </div>
-                            {/* JURUSAN */}
-                            <div className="flex flex-col">
+                            <div className="flex flex-col relative z-[53]">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
                                     Jurusan
                                 </label>
-                                <select
-                                    name="jurusan"
-                                    value={bulkDeleteData.jurusan}
-                                    onChange={handleBulkDeleteChange}
-                                    className="bg-[#1C2235] text-gray-300 rounded-full py-4 px-6 appearance-none outline-none border border-transparent focus:border-[#2D60FF] shadow-inner font-medium text-xs tracking-widest"
-                                    required>
-                                    <option
-                                        value=""
-                                        disabled
-                                        className="text-gray-500">
-                                        PILIH JURUSAN YANG INGIN DI HAPUS
-                                    </option>
-                                    <option value="FI">
-                                        FARMASI INDUSTRI (FI)
-                                    </option>
-                                    <option value="TKI">
-                                        TEKNIK KIMIA INDUSTRI (TKI)
-                                    </option>
-                                </select>
+                                {renderCustomSelect(
+                                    "jurusan",
+                                    bulkDeleteData.jurusan,
+                                    "PILIH JURUSAN YANG INGIN DI HAPUS",
+                                    jurusanOptions,
+                                    handleBulkDeleteChange,
+                                )}
                             </div>
                             <button
                                 type="submit"
@@ -830,35 +879,29 @@ export default function AdminDashboard() {
                                 placeholder="Password Baru (Kosongkan jika tidak diubah)"
                                 className="w-full bg-transparent border border-white/30 rounded-full py-3 px-6 text-white focus:outline-none focus:border-blue-400"
                             />
+
+                            {/* Dropdown Kustom untuk Edit Satuan */}
                             <div className="flex gap-4">
-                                <select
-                                    name="kelas"
-                                    value={selectedStudent.kelas}
-                                    onChange={handleEditChange}
-                                    className="w-1/2 bg-transparent border border-white/30 rounded-full py-3 px-6 text-white focus:outline-none focus:border-blue-400 appearance-none">
-                                    <option value="X" className="text-black">
-                                        Kelas X
-                                    </option>
-                                    <option value="XI" className="text-black">
-                                        Kelas XI
-                                    </option>
-                                    <option value="XII" className="text-black">
-                                        Kelas XII
-                                    </option>
-                                </select>
-                                <select
-                                    name="jurusan"
-                                    value={selectedStudent.jurusan}
-                                    onChange={handleEditChange}
-                                    className="w-1/2 bg-transparent border border-white/30 rounded-full py-3 px-6 text-white focus:outline-none focus:border-blue-400 appearance-none">
-                                    <option value="FI" className="text-black">
-                                        FI
-                                    </option>
-                                    <option value="TKI" className="text-black">
-                                        TKI
-                                    </option>
-                                </select>
+                                <div className="w-1/2 relative z-[54]">
+                                    {renderCustomSelect(
+                                        "kelas",
+                                        selectedStudent.kelas,
+                                        "Pilih Kelas",
+                                        kelasEditOptions,
+                                        handleEditChange,
+                                    )}
+                                </div>
+                                <div className="w-1/2 relative z-[53]">
+                                    {renderCustomSelect(
+                                        "jurusan",
+                                        selectedStudent.jurusan,
+                                        "Pilih Jurusan",
+                                        jurusanEditOptions,
+                                        handleEditChange,
+                                    )}
+                                </div>
                             </div>
+
                             <div className="mt-6 flex gap-4 justify-center">
                                 <button
                                     type="submit"
