@@ -99,7 +99,7 @@ export default function StudentDonasi() {
                 <div className="bg-[#0B1A3A] border border-white/10 rounded-[2rem] p-8 flex flex-col md:flex-row items-center justify-between shadow-2xl">
                     <div className="md:w-2/3 text-white">
                         <h2 className="text-3xl font-bold mb-4 tracking-widest uppercase">
-                            Quote
+                            Quotes
                         </h2>
                         <p className="italic text-gray-300 leading-relaxed text-lg">
                             "Setiap anak adalah penulis bagi kisahnya sendiri.
@@ -130,7 +130,7 @@ export default function StudentDonasi() {
                                 Donasi Yukk
                             </h1>
                             <h2 className="text-4xl font-light mb-8 opacity-90">
-                                Bantu Teman Kita
+                                Untuk Pembangunan Sekolah Kita
                             </h2>
                             <button
                                 onClick={() => setStep(1)}

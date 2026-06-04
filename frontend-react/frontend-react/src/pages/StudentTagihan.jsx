@@ -188,7 +188,7 @@ export default function StudentTagihan() {
                 <div className="flex-shrink-0 bg-[#122A5A] rounded-[2rem] p-6 lg:p-10 flex flex-col lg:flex-row items-center justify-between shadow-2xl border border-white/5 mb-8">
                     <div className="text-center lg:text-left">
                         <h2 className="text-white text-2xl lg:text-4xl font-bold tracking-widest mb-4 uppercase">
-                            Quote from Ayubi
+                            Quotes
                         </h2>
                         <p className="text-gray-300 text-sm lg:text-xl italic font-medium leading-relaxed">
                             "Investasi terbaik bagi masa depan adalah{" "}

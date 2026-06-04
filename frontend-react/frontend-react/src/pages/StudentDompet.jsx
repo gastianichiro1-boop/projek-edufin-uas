@@ -11,7 +11,13 @@ export default function StudentDompet() {
     const [topupStep, setTopupStep] = useState(1);
     const [selectedMethod, setSelectedMethod] = useState("");
     const [selectedProvider, setSelectedProvider] = useState("");
-    const [nominal, setNominal] = useState("");
+
+    // ==========================================
+    // PERBAIKAN: FORMAT ANGKA RUPIAH (Thousand Separator)
+    // ==========================================
+    const [nominalView, setNominalView] = useState(""); // Untuk ditampilkan di layar (ada titiknya)
+    const [nominalValue, setNominalValue] = useState(""); // Angka murni untuk dikirim ke API
+
     const [loading, setLoading] = useState(false);
 
     // State Histori & Detail Trx
@@ -19,19 +25,16 @@ export default function StudentDompet() {
     const [txDetail, setTxDetail] = useState(null);
     const [selectedTx, setSelectedTx] = useState(null);
 
-    // ==========================================
-    // STATE BARU: Limit Saldo 5 Juta
-    // ==========================================
-    const [showLimitModal, setShowLimitModal] = useState(false); // Pop-up Foto 1
-    const [showLimitTooltip, setShowLimitTooltip] = useState(false); // Pop-up Foto 2 (Tooltip 8 Detik)
+    // State Limit Saldo 5 Juta
+    const [showLimitModal, setShowLimitModal] = useState(false);
+    const [showLimitTooltip, setShowLimitTooltip] = useState(false);
 
-    // FUNGSI UTAMA: Mengambil seluruh riwayat dari Database
+    // Mengambil seluruh riwayat dari Database
     const fetchDompetData = async (id) => {
         try {
             const res = await axios.get(
                 `${import.meta.env.VITE_API_BASE_URL}/transactions/${id}`,
             );
-            // Mengurutkan dari yang terbaru
             const sortedHistory = res.data.sort(
                 (a, b) => new Date(b.created_at) - new Date(a.created_at),
             );
@@ -50,11 +53,8 @@ export default function StudentDompet() {
         }
     }, []);
 
-    // ==========================================
-    // EFEK TIMER 8 DETIK UNTUK TOOLTIP (FOTO 2)
-    // ==========================================
+    // Efek Timer 8 Detik Untuk Tooltip
     useEffect(() => {
-        // Cek total pengisian saldo bulan ini dari history
         if (studentData && history.length > 0) {
             const currentMonth = new Date().getMonth();
             const currentYear = new Date().getFullYear();
@@ -70,14 +70,12 @@ export default function StudentDompet() {
                 })
                 .reduce((sum, tx) => sum + parseInt(tx.amount || 0), 0);
 
-            // Jika total top up >= 5.000.000, munculkan tooltip 8 detik
             if (totalTopupBulanIni >= 5000000) {
                 setShowLimitTooltip(true);
                 const timer = setTimeout(() => {
                     setShowLimitTooltip(false);
-                }, 8000); // Hilang setelah 8 detik
+                }, 8000);
 
-                // Bersihkan timer jika komponen ditutup
                 return () => clearTimeout(timer);
             } else {
                 setShowLimitTooltip(false);
@@ -86,33 +84,54 @@ export default function StudentDompet() {
     }, [studentData, history]);
 
     // ==========================================
-    // PERBAIKAN LOGIKA: CEK LIMIT DULU, LALU CATAT HISTORI
+    // FUNGSI BARU: FORMATTER INPUT RUPIAH
     // ==========================================
+    const handleNominalInput = (e) => {
+        // 1. Ambil nilai ketikan dan buang semua yang BUKAN angka
+        const rawValue = e.target.value.replace(/[^0-9]/g, "");
+
+        // 2. Simpan angka murninya untuk API
+        setNominalValue(rawValue);
+
+        // 3. Format angka murni tersebut dengan pemisah ribuan (titik) untuk ditampilkan di UI
+        if (rawValue) {
+            const formattedValue = new Intl.NumberFormat("id-ID").format(
+                rawValue,
+            );
+            setNominalView(formattedValue);
+        } else {
+            setNominalView("");
+        }
+    };
+
+    // Logika Top Up
     const handleTopup = async () => {
-        if (parseInt(nominal) < 10000 || parseInt(nominal) > 5000000) {
+        // PASTIKAN MENGGUNAKAN nominalValue (Angka murni tanpa titik) UNTUK VALIDASI
+        if (
+            parseInt(nominalValue) < 10000 ||
+            parseInt(nominalValue) > 5000000
+        ) {
             alert("Minimal 10.000 dan Maksimal Rp 5.000.000");
             return;
         }
+
         setLoading(true);
         try {
-            // 1. UPDATE SALDO & CEK LIMIT DULU KE LARAVEL
             const updateSaldo = await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/students/topup/${studentData.id}`,
-                { nominal },
+                { nominal: nominalValue }, // Kirim angka murni
             );
 
-            // 2. JIKA LARAVEL MENGIZINKAN (TIDAK KENA LIMIT), BARU CATAT HISTORI TRANSAKSI
             await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/transactions`,
                 {
                     student_id: studentData.id,
                     title: "ISI SALDO",
                     subtitle: selectedProvider,
-                    amount: nominal,
+                    amount: nominalValue, // Kirim angka murni
                 },
             );
 
-            // 3. Perbarui LocalStorage
             const updatedData = {
                 ...studentData,
                 saldo: updateSaldo.data.saldo_baru,
@@ -120,7 +139,6 @@ export default function StudentDompet() {
             localStorage.setItem("student_data", JSON.stringify(updatedData));
             setStudentData(updatedData);
 
-            // 4. Refresh data histori langsung dari database
             fetchDompetData(studentData.id);
 
             const now = new Date();
@@ -133,6 +151,7 @@ export default function StudentDompet() {
                     })
                     .replace(":", " . "),
                 keterangan: `Isi Saldo Melalui\n${selectedMethod === "BANK" ? "Transfer Bank" : "E - Wallet"} ${selectedProvider}`,
+                amount_formatted: nominalView, // Simpan format yang sudah ada titiknya untuk struk
             });
 
             setTimeout(() => {
@@ -141,15 +160,12 @@ export default function StudentDompet() {
             }, 1000);
         } catch (error) {
             setLoading(false);
-            // ==========================================
-            // LOGIKA MENANGKAP ERROR LIMIT DARI LARAVEL
-            // ==========================================
             if (
                 error.response?.status === 403 &&
                 error.response?.data?.status === "error_limit"
             ) {
-                setShowTopupModal(false); // Tutup modal top up
-                setShowLimitModal(true); // Munculkan modal Limit (Foto 1)
+                setShowTopupModal(false);
+                setShowLimitModal(true);
             } else {
                 alert(
                     "Gagal memproses transaksi: " +
@@ -212,7 +228,9 @@ export default function StudentDompet() {
                                         e.preventDefault();
                                         setShowTopupModal(true);
                                         setTopupStep(1);
-                                        setNominal("");
+                                        // Reset nilai saat modal dibuka
+                                        setNominalView("");
+                                        setNominalValue("");
                                     }}
                                     className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-3xl font-light transition-all duration-300 hover:scale-110 hover:bg-white/20 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6)] backdrop-blur-sm cursor-pointer z-50 outline-none pb-1">
                                     +
@@ -544,24 +562,18 @@ export default function StudentDompet() {
                                 <h3 className="text-white text-center font-bold text-2xl tracking-wide">
                                     Masukkan Nominal
                                 </h3>
+                                {/* INPUT NOMINAL YANG SUDAH DIPERBAIKI */}
                                 <input
                                     type="text"
-                                    value={nominal}
-                                    onChange={(e) =>
-                                        setNominal(
-                                            e.target.value.replace(
-                                                /[^0-9]/g,
-                                                "",
-                                            ),
-                                        )
-                                    }
+                                    value={nominalView}
+                                    onChange={handleNominalInput}
                                     placeholder="Maksimal Rp 5.000.000"
                                     className="bg-transparent border-b-2 border-white/20 focus:border-[#2D60FF] py-4 px-6 text-white text-center text-3xl font-bold tracking-widest outline-none transition-colors placeholder-white/30"
                                 />
                                 <button
                                     onClick={handleTopup}
-                                    disabled={loading || !nominal}
-                                    className={`py-4 rounded-full font-bold flex items-center justify-center gap-3 transition-all tracking-widest shadow-lg outline-none ${loading || !nominal ? "bg-white/10 text-white/40 cursor-not-allowed border border-white/5" : "bg-[#4285F4] hover:bg-blue-600 text-white"}`}>
+                                    disabled={loading || !nominalValue}
+                                    className={`py-4 rounded-full font-bold flex items-center justify-center gap-3 transition-all tracking-widest shadow-lg outline-none ${loading || !nominalValue ? "bg-white/10 text-white/40 cursor-not-allowed border border-white/5" : "bg-[#4285F4] hover:bg-blue-600 text-white"}`}>
                                     {loading ? (
                                         <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     ) : (
@@ -608,6 +620,15 @@ export default function StudentDompet() {
                                         </span>
                                         <span className="text-gray-200 tracking-wider text-sm font-medium">
                                             {txDetail.waktu}
+                                        </span>
+                                    </div>
+                                    {/* MENGGUNAKAN NOMINAL VIEW DI STRUK AGAR ADA TITIKNYA */}
+                                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                        <span className="font-bold tracking-wide text-sm">
+                                            Nominal :
+                                        </span>
+                                        <span className="text-gray-200 tracking-wider text-sm font-medium">
+                                            Rp. {txDetail.amount_formatted}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center border-b border-white/5 pb-1 mt-1">
