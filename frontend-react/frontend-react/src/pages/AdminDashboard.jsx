@@ -665,12 +665,12 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex flex-col relative z-[53]">
                                 <label className="text-white font-bold tracking-wider text-sm mb-2 uppercase">
-                                    Naik Kelas
+                                    Kelas Akhir
                                 </label>
                                 {renderCustomSelect(
                                     "kelasAkhir",
                                     bulkEditData.kelasAkhir,
-                                    "NAIK KELAS BERAPA",
+                                    "AKHIR KELAS YANG DI TETAPKAN",
                                     kelasOptions,
                                     handleBulkEditChange,
                                 )}

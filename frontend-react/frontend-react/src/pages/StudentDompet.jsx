@@ -90,7 +90,7 @@ export default function StudentDompet() {
     // ==========================================
     const handleTopup = async () => {
         if (parseInt(nominal) < 10000 || parseInt(nominal) > 5000000) {
-            alert("Minimal 10.000 danMaksimal Rp 5.000.000");
+            alert("Minimal 10.000 dan Maksimal Rp 5.000.000");
             return;
         }
         setLoading(true);

@@ -136,7 +136,7 @@ export default function AdminTagihan() {
 
             <main className="flex-1 p-8 flex flex-col relative overflow-hidden h-screen">
                 {/* ========================================== */}
-                {/* PERBAIKAN: TOP ACTIONS (DISAMAKAN DENGAN FOTO 1) */}
+                {/* TOP ACTIONS */}
                 {/* ========================================== */}
                 <div className="flex justify-between items-center mb-8">
                     <div className="relative w-96">
@@ -440,6 +440,7 @@ export default function AdminTagihan() {
                             className="w-full bg-transparent border border-white/40 rounded-full py-4 px-8 text-sm font-bold tracking-widest focus:outline-none focus:border-white text-white placeholder-white/50 transition-colors"
                         />
 
+                        {/* PERBAIKAN: Input Tanggal yang Lebih Bersih */}
                         <div className="relative">
                             <input
                                 type="date"
@@ -447,18 +448,13 @@ export default function AdminTagihan() {
                                 onChange={(e) =>
                                     setTanggalJatuhTempo(e.target.value)
                                 }
-                                className="w-full bg-transparent border border-white/40 rounded-full py-4 px-8 text-sm font-bold tracking-widest focus:outline-none focus:border-white text-white placeholder-white/50 appearance-none [color-scheme:dark] transition-colors"
+                                className="w-full bg-transparent border border-white/40 rounded-full py-4 px-8 text-sm font-bold tracking-widest focus:outline-none focus:border-white text-white appearance-none [color-scheme:dark] transition-colors"
                                 style={{
                                     color: tanggalJatuhTempo
                                         ? "white"
                                         : "rgba(255,255,255,0.5)",
                                 }}
                             />
-                            {!tanggalJatuhTempo && (
-                                <div className="absolute inset-y-0 left-8 flex items-center pointer-events-none text-sm font-bold tracking-widest text-white/50">
-                                    TANGGAL JATUH TEMPO
-                                </div>
-                            )}
                         </div>
 
                         <div className="relative">
